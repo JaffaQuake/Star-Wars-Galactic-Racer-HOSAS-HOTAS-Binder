@@ -1,0 +1,53 @@
+RELEASE / LICENSE CHECKLIST
+Galactic Racer HOSAS/HOTAS Bridge
+
+Practical checklist for publishing GPLv3 releases.
+
+Repository root:
+[ ] LICENSE.txt
+    Full GNU General Public License version 3 text.
+
+[ ] THIRD_PARTY_NOTICES.txt
+    ViGEmClient, ViGEmBus, Go, and any future redistributed dependencies.
+
+[ ] README.md
+    Recommended license section:
+    "Galactic Racer HOSAS/HOTAS Bridge is licensed under the GNU General
+    Public License v3.0. See LICENSE.txt. Third-party components retain their
+    own licenses; see THIRD_PARTY_NOTICES.txt."
+
+For every binary release:
+[ ] Make the exact Corresponding Source for that binary available.
+    The simplest approach for this project is to include the Source folder
+    and build scripts in the same release ZIP, or publish the exact matching
+    tagged source next to the downloadable binary.
+
+[ ] Keep Build-Local.cmd or other scripts needed to rebuild the program with
+    the source release.
+
+[ ] Include LICENSE.txt and THIRD_PARTY_NOTICES.txt in the downloadable ZIP.
+
+[ ] If ViGEmClient.dll or a ViGEmBus installer/package is included, keep the
+    applicable MIT/BSD notices in THIRD_PARTY_NOTICES.txt.
+
+[ ] If a release changes dependencies, review their licenses and update
+    THIRD_PARTY_NOTICES.txt before publishing.
+
+Suggested repository structure:
+
+GalacticRacerHOSAS/
+|-- LICENSE.txt
+|-- THIRD_PARTY_NOTICES.txt
+|-- README.md
+|-- QUICKSTART.txt
+|-- Install.cmd
+|-- GalacticRacerHOSAS.exe
+|-- ViGEmClient.dll              (if distributed directly)
+|-- Source/
+|   |-- main.go
+|   |-- go.mod
+|   `-- Build-Local.cmd
+`-- assets/
+    `-- app-icon.ico             (if you keep assets separately)
+
+This checklist is a practical project aid, not legal advice.

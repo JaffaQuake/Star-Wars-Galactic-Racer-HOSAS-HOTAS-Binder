@@ -1,0 +1,118 @@
+GALACTIC RACER HOSAS/HOTAS BRIDGE — QUICK START
+by JaffaQuake and Mars
+
+INSTALLATION
+
+1. Download and extract the Galactic Racer HOSAS/HOTAS Bridge ZIP.
+2. Open the extracted folder.
+3. Double-click Install.cmd.
+4. Follow any Windows prompts that appear.
+5. After installation finishes, launch Galactic Racer HOSAS Bridge from the installed shortcut or app folder.
+
+Important:
+- Do not run the EXE directly from inside the ZIP. Extract the ZIP first.
+- Install.cmd places the app files where they belong and makes sure the required virtual Xbox controller components are available.
+- If Windows SmartScreen appears, review the prompt and choose to run the installer only if you trust the files you downloaded.
+
+1. CONNECT YOUR CONTROLS
+- Plug in your HOSAS or HOTAS devices before opening the app.
+- Launch Galactic Racer HOSAS Bridge.
+- Select your preferred Polling Rate if desired. 500 Hz is a good default.
+
+2. CHOOSE YOUR CONTROL MODE
+
+HOSAS
+- Set Control Mode to HOSAS.
+- Choose your Left Stick and Right Stick devices.
+- Click Detect Left, then push the LEFT stick clearly forward.
+- Click Detect Right, then push the RIGHT stick clearly forward.
+- Confirm the live monitor shows the correct stick movement.
+- Optional: enable Hybrid Preserve Thrust if you want forward steering inputs to keep more thrust.
+
+HOTAS
+- Set Control Mode to HOTAS.
+- Select your Throttle device and throttle axis.
+- Use Invert if forward/backward is reversed.
+- Select your Flight Stick device.
+- Choose the stick X and Y axes.
+- Use X/Y Invert if needed.
+- In HOTAS mode:
+  - Throttle -> Xbox RT / Forward
+  - Flight Stick X/Y -> Xbox Left Thumbstick
+
+3. MAP YOUR XBOX BUTTONS
+- In the Xbox Button / Switch Mapping section, click Learn next to the Xbox control you want to assign.
+- Press the physical button, trigger, or hat direction on your flight stick.
+- The app will remember that input.
+- Repeat for any controls you want, such as:
+  - Xbox A / B / X / Y
+  - Left / Right Bumper
+  - Start / Menu
+  - Back / View
+  - Left / Right Stick Click
+  - D-pad Up / Down / Left / Right
+- Use Clear if you want to remove a mapping.
+
+4. OPTIONAL ON-FOOT CONTROLS
+- In On-Foot Controls, choose:
+  - Buttons -> WASD, or
+  - Thumbstick -> WASD
+- For Buttons -> WASD:
+  - Click Learn next to W, A, S, and D.
+  - Press the physical stick button or hat direction you want to use.
+- This is useful for walking around without reaching for the keyboard.
+
+5. OPTIONAL PEDALS / CAMERA
+- Select your rudder pedal device if you want to use it.
+- Choose the pedal mode you want.
+- For keyboard camera controls, choose the desired left/right keys and activation threshold.
+- Existing Look Left / Look Right / Look Back mappings can also be assigned to stick buttons or hats.
+
+6. START PLAYING
+IMPORTANT:
+- The virtual Xbox controller does NOT exist until you click Start Mapping.
+- Once your devices and buttons are configured, click START MAPPING.
+- The app will create the virtual Xbox controller and begin sending your HOSAS/HOTAS inputs to the game.
+- Launch or return to Galactic Racer and play.
+
+7. WHEN YOU ARE DONE
+- Click STOP MAPPING.
+- This removes the virtual Xbox controller so it does not interfere with a real Xbox controller.
+- Your settings are saved automatically.
+
+FASTEST POSSIBLE SETUP
+
+HOSAS:
+1. Plug in both sticks.
+2. Open the app.
+3. Select HOSAS.
+4. Detect Left.
+5. Detect Right.
+6. Learn the Xbox buttons you care about.
+7. Click Start Mapping.
+8. Play.
+
+HOTAS:
+1. Plug in throttle + stick.
+2. Open the app.
+3. Select HOTAS.
+4. Select throttle device/axis.
+5. Select flight stick device + X/Y axes.
+6. Learn the Xbox buttons you care about.
+7. Click Start Mapping.
+8. Play.
+
+USER CONFIG FILE
+
+Your saved mappings and preferences are stored here:
+
+%LOCALAPPDATA%\GalacticRacerHOSAS\hosas_config.json
+
+You can back up that file if you want to preserve your mappings.
+
+TROUBLESHOOTING
+- Wrong direction? Use the appropriate Invert checkbox.
+- Xbox output not working? Make sure Start Mapping is active.
+- Real Xbox controller stopped responding? Click Stop Mapping or close the app.
+- Device missing? Use Refresh Devices.
+- If a button was mapped incorrectly, click Clear and Learn it again.
