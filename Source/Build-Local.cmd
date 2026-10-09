@@ -2,7 +2,7 @@
 setlocal
 cd /d "%~dp0"
 
-echo Building Galactic Racer HOSAS / HOTAS Bridge v1.8...
+echo Building Galactic Racer HOSAS / HOTAS Bridge v1.9...
 go build -ldflags="-H windowsgui" -o GalacticRacerHOSAS.exe .
 if errorlevel 1 (
   echo.

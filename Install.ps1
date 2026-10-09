@@ -1,5 +1,5 @@
 $ErrorActionPreference = 'Stop'
-Write-Host "Galactic Racer HOSAS / HOTAS Bridge v1.8 installer" -ForegroundColor Cyan
+Write-Host "Galactic Racer HOSAS / HOTAS Bridge v1.9 installer" -ForegroundColor Cyan
 
 $sourceDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $appDir = Join-Path $env:LOCALAPPDATA 'GalacticRacerHOSAS'

@@ -31,7 +31,7 @@ import (
 var embeddedAppIcon []byte
 
 const (
-	appTitle = "Galactic Racer HOSAS / HOTAS Bridge v1.8 — by JaffaQuake and Mars"
+	appTitle = "Galactic Racer HOSAS / HOTAS Bridge v1.9 — by JaffaQuake and Mars"
 
 	WS_OVERLAPPED  = 0x00000000
 	WS_CAPTION     = 0x00C00000
@@ -164,10 +164,12 @@ const (
 	idLeftDevice
 	idLeftAxis
 	idLeftInvert
+	idLeftThrottleMode
 	idDetectLeft
 	idRightDevice
 	idRightAxis
 	idRightInvert
+	idRightThrottleMode
 	idDetectRight
 	idPedalDevice
 	idPedalAxis
@@ -309,6 +311,8 @@ type config struct {
 	PedalAxis              int                `json:"pedal_axis"`
 	LeftInvert             bool               `json:"left_invert"`
 	RightInvert            bool               `json:"right_invert"`
+	LeftThrottleMode       bool               `json:"left_throttle_mode"`
+	RightThrottleMode      bool               `json:"right_throttle_mode"`
 	PedalInvert            bool               `json:"pedal_invert"`
 	PedalMode              string             `json:"pedal_mode"`
 	Deadzone               int                `json:"deadzone"`
@@ -1683,6 +1687,8 @@ func loadConfig(c *config) {
 	readAxis(raw, "pedal_axis", &d.PedalAxis)
 	readBool(raw, "left_invert", &d.LeftInvert)
 	readBool(raw, "right_invert", &d.RightInvert)
+	readBool(raw, "left_throttle_mode", &d.LeftThrottleMode)
+	readBool(raw, "right_throttle_mode", &d.RightThrottleMode)
 	readBool(raw, "pedal_invert", &d.PedalInvert)
 	readPedalMode(raw, "pedal_mode", &d.PedalMode)
 	readDeadzone(raw, "deadzone", &d.Deadzone)
@@ -2053,6 +2059,51 @@ func axisNormalized(deviceID, axis int, invert bool, j joyInfoEx) float64 {
 	}
 	return clamp(v, -1, 1)
 }
+
+// axisThrottleCenteredNormalized treats an absolute throttle axis as a bidirectional
+// HOSAS input: 0% travel = -1, 50% travel = 0, 100% travel = +1.
+// This is intentionally explicit even though many symmetric WinMM axes normalize
+// similarly, because throttle devices are not spring-centered and users need a
+// predictable midpoint-neutral mode.
+func axisThrottleCenteredNormalized(deviceID, axis int, invert bool, j joyInfoEx) float64 {
+	app.devicesMu.RLock()
+	var caps *joyCaps
+	for i := range app.devices {
+		if app.devices[i].ID == deviceID {
+			cp := app.devices[i].Caps
+			caps = &cp
+			break
+		}
+	}
+	app.devicesMu.RUnlock()
+	minv, maxv := uint32(0), uint32(65535)
+	if caps != nil {
+		minv, maxv = axisRange(*caps, axis)
+	}
+	if maxv <= minv {
+		minv, maxv = 0, 65535
+	}
+	raw := float64(axisRaw(j, axis))
+	minf, maxf := float64(minv), float64(maxv)
+	mid := minf + (maxf-minf)*0.5
+	var v float64
+	if raw >= mid {
+		span := maxf - mid
+		if span > 0 {
+			v = (raw - mid) / span
+		}
+	} else {
+		span := mid - minf
+		if span > 0 {
+			v = (raw - mid) / span
+		}
+	}
+	if invert {
+		v = -v
+	}
+	return clamp(v, -1, 1)
+}
+
 func applyDeadzone(v float64, pct int) float64 {
 	dz := clamp(float64(pct)/100.0, 0, 0.40)
 	a := math.Abs(v)
@@ -2163,10 +2214,18 @@ func (a *appState) pollLoop() {
 				}
 			} else {
 				if okmap[c.LeftID] {
-					l = applyDeadzone(axisNormalized(c.LeftID, c.LeftAxis, c.LeftInvert, states[c.LeftID]), c.Deadzone)
+					if c.LeftThrottleMode {
+						l = applyDeadzone(axisThrottleCenteredNormalized(c.LeftID, c.LeftAxis, c.LeftInvert, states[c.LeftID]), c.Deadzone)
+					} else {
+						l = applyDeadzone(axisNormalized(c.LeftID, c.LeftAxis, c.LeftInvert, states[c.LeftID]), c.Deadzone)
+					}
 				}
 				if okmap[c.RightID] {
-					r = applyDeadzone(axisNormalized(c.RightID, c.RightAxis, c.RightInvert, states[c.RightID]), c.Deadzone)
+					if c.RightThrottleMode {
+						r = applyDeadzone(axisThrottleCenteredNormalized(c.RightID, c.RightAxis, c.RightInvert, states[c.RightID]), c.Deadzone)
+					} else {
+						r = applyDeadzone(axisNormalized(c.RightID, c.RightAxis, c.RightInvert, states[c.RightID]), c.Deadzone)
+					}
 				}
 			}
 			if c.PedalID >= 0 && okmap[c.PedalID] {
@@ -2882,7 +2941,7 @@ func (a *appState) createUI() {
 	a.createLabel("by JaffaQuake and Mars", 820, 15, 260, 24)
 	a.createLabel("Control mode", 850, 50, 95, 22)
 	a.createCombo(945, 44, 165, 160, idControlMode)
-	a.createButton("Refresh devices", 710, 70, 125, 28, idRefresh)
+	a.createButton("Refresh devices", 945, 72, 125, 28, idRefresh)
 
 	// HOSAS controls. Hidden automatically when HOTAS is selected.
 	a.controlHOSASGroup = append(a.controlHOSASGroup,
@@ -2893,12 +2952,14 @@ func (a *appState) createUI() {
 		a.createCombo(150, 72, 240, 260, idLeftDevice),
 		a.createCombo(405, 72, 85, 220, idLeftAxis),
 		a.createCheck("Invert", 500, 73, 75, 24, idLeftInvert),
-		a.createButton("Detect Left", 585, 70, 110, 28, idDetectLeft),
+		a.createCheck("Throttle axis", 580, 73, 115, 24, idLeftThrottleMode),
+		a.createButton("Detect Left", 705, 70, 110, 28, idDetectLeft),
 		a.createLabel("Right stick", 20, 110, 120, 24),
 		a.createCombo(150, 106, 240, 260, idRightDevice),
 		a.createCombo(405, 106, 85, 220, idRightAxis),
 		a.createCheck("Invert", 500, 107, 75, 24, idRightInvert),
-		a.createButton("Detect Right", 585, 104, 110, 28, idDetectRight))
+		a.createCheck("Throttle axis", 580, 107, 115, 24, idRightThrottleMode),
+		a.createButton("Detect Right", 705, 104, 110, 28, idDetectRight))
 
 	// HOTAS controls occupy the same space as the HOSAS rows. Throttle is RT-only;
 	// the selected flight stick maps directly to the virtual Xbox left thumbstick.
@@ -3040,6 +3101,8 @@ func (a *appState) createUI() {
 	a.tooltipForID(idHotasStickYAxis, "Physical flight-stick vertical axis mapped to Xbox Left Stick Y.")
 	a.tooltipForID(idDetectLeft, "Move the LEFT flight stick forward after clicking. The app identifies the device, forward/back axis, and inversion automatically.")
 	a.tooltipForID(idDetectRight, "Move the RIGHT flight stick forward after clicking. The app identifies the device, forward/back axis, and inversion automatically.")
+	a.tooltipForID(idLeftThrottleMode, "Treat the selected LEFT HOSAS axis as a throttle lever: 0% = -1, 50% = neutral (0), 100% = +1. Useful for non-spring-centered throttle hardware.")
+	a.tooltipForID(idRightThrottleMode, "Treat the selected RIGHT HOSAS axis as a throttle lever: 0% = -1, 50% = neutral (0), 100% = +1. Useful for non-spring-centered throttle hardware.")
 	a.tooltipForID(idRefresh, "Rescan Windows for connected controller devices and restart the DirectInput device list.")
 	a.tooltipForID(idDetectWASD, "DirectInput thumbstick detection: push the small stick RIGHT, return to center, then push it FORWARD. This reads the same X/Y Rotation path that joy.cpl uses.")
 	a.tooltipForID(idOnFootMode, "Choose how on-foot W/A/S/D is produced: analog thumbstick, learned stick buttons/hats, or off.")
@@ -3154,6 +3217,8 @@ func (a *appState) applyConfigToUI() {
 	comboSetIndex(idPedalAxis, c.PedalAxis)
 	setChecked(a.controls[idLeftInvert], c.LeftInvert)
 	setChecked(a.controls[idRightInvert], c.RightInvert)
+	setChecked(a.controls[idLeftThrottleMode], c.LeftThrottleMode)
+	setChecked(a.controls[idRightThrottleMode], c.RightThrottleMode)
 	setChecked(a.controls[idPedalInvert], c.PedalInvert)
 	setChecked(a.controls[idWASDInvertSide], c.ThumbWASDInvertSide)
 	setChecked(a.controls[idWASDInvertForward], c.ThumbWASDInvertForward)
@@ -3278,6 +3343,8 @@ func (a *appState) syncConfigFromUI() {
 	}
 	c.LeftInvert = isChecked(a.controls[idLeftInvert])
 	c.RightInvert = isChecked(a.controls[idRightInvert])
+	c.LeftThrottleMode = isChecked(a.controls[idLeftThrottleMode])
+	c.RightThrottleMode = isChecked(a.controls[idRightThrottleMode])
 	c.PedalInvert = isChecked(a.controls[idPedalInvert])
 	c.ThumbWASDInvertSide = isChecked(a.controls[idWASDInvertSide])
 	c.ThumbWASDInvertForward = isChecked(a.controls[idWASDInvertForward])

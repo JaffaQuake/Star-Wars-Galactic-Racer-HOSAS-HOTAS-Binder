@@ -1,23 +1,28 @@
-GALACTIC RACER HOSAS / HOTAS BRIDGE - v1.8
+GALACTIC RACER HOSAS / HOTAS BRIDGE - v1.9
 by JaffaQuake and Mars
 ==========================================
 
-WHAT'S NEW IN v1.8
+WHAT'S NEW IN v1.9
 ------------------
-1. OPEN-SOURCE RELEASE PACKAGING
+1. PER-STICK THROTTLE AXIS MODE FOR HOSAS
+   Each HOSAS side now has its own "Throttle axis" checkbox. When enabled, that selected axis
+   is treated as an absolute throttle lever with 0% = -1, 50% = neutral, and 100% = +1.
+   This allows a throttle lever to substitute for either side of the two-input HOSAS driving model.
+
+2. OPEN-SOURCE RELEASE PACKAGING
    The project is now distributed under the GNU General Public License v3.0 or later.
    The release package includes the full license, third-party notices, matching source code,
    development/build instructions, and a quick-start guide.
 
-2. THIRD-PARTY LICENSE NOTICES
+3. THIRD-PARTY LICENSE NOTICES
    THIRD_PARTY_NOTICES.txt documents the licenses for ViGEmClient, ViGEmBus, and the Go runtime.
    Those third-party components remain under their own licenses.
 
-3. SOURCE LICENSE HEADER
+4. SOURCE LICENSE HEADER
    main.go now contains an SPDX GPL license identifier and copyright notice. This does not change
    application behavior; it makes the licensing of the source explicit.
 
-FUNCTIONALITY RETAINED FROM v1.7
+FUNCTIONALITY RETAINED FROM v1.8
 --------------------------------
 - HOSAS / HOTAS Control Mode selector.
 - HOSAS differential steering and optional Hybrid Preserve Thrust.

@@ -1,4 +1,4 @@
-GALACTIC RACER HOSAS / HOTAS BRIDGE - LOCAL DEVELOPMENT (v1.8)
+GALACTIC RACER HOSAS / HOTAS BRIDGE - LOCAL DEVELOPMENT (v1.9)
 =======================================================
 
 The source is written in Go. main.go contains the current application.

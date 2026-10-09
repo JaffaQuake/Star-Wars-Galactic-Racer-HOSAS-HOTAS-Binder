@@ -26,6 +26,7 @@ HOSAS
 - Choose your Left Stick and Right Stick devices.
 - Click Detect Left, then push the LEFT stick clearly forward.
 - Click Detect Right, then push the RIGHT stick clearly forward.
+- If either side uses a throttle lever instead of a spring-centered stick, enable that side's Throttle axis checkbox. The lever midpoint (50%) becomes neutral.
 - Confirm the live monitor shows the correct stick movement.
 - Optional: enable Hybrid Preserve Thrust if you want forward steering inputs to keep more thrust.
 
