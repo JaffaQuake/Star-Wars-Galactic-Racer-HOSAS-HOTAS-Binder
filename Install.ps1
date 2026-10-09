@@ -35,7 +35,7 @@ if (-not (Test-Path $dllPath)) {
         throw "vgamepad package checksum mismatch. Got $hash"
     }
     tar -xzf $tgz -C $tmp
-    $found = Get-ChildItem -Path $tmp -Recurse -Filter 'ViGEmClient.dll' | Where-Object { $_.FullName -match '\x64\' } | Select-Object -First 1
+    $found = Get-ChildItem -Path $tmp -Recurse -Filter 'ViGEmClient.dll' | Where-Object { $_.FullName -match '\x64' } | Select-Object -First 1 # Removed trailing '\' from '\x64\' Which was causing installation of ViGEmClient to fail.
     if (-not $found) { throw 'Could not extract the x64 ViGEmClient.dll.' }
     Copy-Item $found.FullName $dllPath -Force
     Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
