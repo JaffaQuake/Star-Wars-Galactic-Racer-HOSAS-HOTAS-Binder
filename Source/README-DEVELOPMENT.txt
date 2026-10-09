@@ -1,4 +1,4 @@
-GALACTIC RACER HOSAS / HOTAS BRIDGE - LOCAL DEVELOPMENT (v1.9)
+GALACTIC RACER HOSAS / HOTAS BRIDGE - LOCAL DEVELOPMENT (v1.91)
 =======================================================
 
 The source is written in Go. main.go contains the current application.
@@ -11,16 +11,18 @@ It runs:
   go build -ldflags="-H windowsgui" -o GalacticRacerHOSAS.exe .
 
 It also tries to copy ViGEmClient.dll from the installed app folder into this Source folder.
-That DLL must be beside the development EXE for virtual Xbox output to work.
+In v1.91 the runtime checks beside the development EXE first, then falls back to the normal installed
+app folder. Keeping a local DLL is still recommended for a portable development build.
 
 WHY A SELF-BUILT EXE CAN LOSE XBOX OUTPUT
 -----------------------------------------
 The program dynamically loads:
   ViGEmClient.dll
 
-from the same directory as the running GalacticRacerHOSAS.exe. A Go build creates only the EXE;
-it does not automatically copy that DLL. If the DLL is missing, joystick/keyboard features can still
-run, but Start Mapping cannot create the virtual Xbox controller.
+The runtime prefers ViGEmClient.dll beside the running GalacticRacerHOSAS.exe, then checks the normal
+installed app folder. A Go build creates only the EXE, so Build-Local.cmd tries to copy the DLL locally.
+If neither location contains the DLL, joystick/keyboard features can still run, but Start Mapping cannot
+create the virtual Xbox controller.
 
 The normal installer places the dependency in:
   %LOCALAPPDATA%\GalacticRacerHOSAS\ViGEmClient.dll

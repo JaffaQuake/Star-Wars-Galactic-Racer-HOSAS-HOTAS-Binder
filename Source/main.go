@@ -31,7 +31,7 @@ import (
 var embeddedAppIcon []byte
 
 const (
-	appTitle = "Galactic Racer HOSAS / HOTAS Bridge v1.9 — by JaffaQuake and Mars"
+	appTitle = "Galactic Racer HOSAS / HOTAS Bridge v1.91 — by JaffaQuake and Mars"
 
 	WS_OVERLAPPED  = 0x00000000
 	WS_CAPTION     = 0x00C00000
@@ -2629,11 +2629,47 @@ func (x *xboxBridge) Start() error {
 	if x.ready {
 		return nil
 	}
-	exe, _ := os.Executable()
-	path := filepath.Join(filepath.Dir(exe), "ViGEmClient.dll")
-	dll, err := syscall.LoadDLL(path)
-	if err != nil {
-		return fmt.Errorf("ViGEmClient.dll not found next to the app")
+
+	// Prefer the DLL beside the running EXE, but do not assume a local/dev build
+	// always copied it there. Fall back to the normal installed app directory.
+	candidates := make([]string, 0, 3)
+	if exe, err := os.Executable(); err == nil && exe != "" {
+		candidates = append(candidates, filepath.Join(filepath.Dir(exe), "ViGEmClient.dll"))
+	}
+	if base := os.Getenv("LOCALAPPDATA"); base != "" {
+		candidates = append(candidates, filepath.Join(base, "GalacticRacerHOSAS", "ViGEmClient.dll"))
+	} else if base, err := os.UserConfigDir(); err == nil && base != "" {
+		candidates = append(candidates, filepath.Join(base, "GalacticRacerHOSAS", "ViGEmClient.dll"))
+	}
+	if wd, err := os.Getwd(); err == nil && wd != "" {
+		candidates = append(candidates, filepath.Join(wd, "ViGEmClient.dll"))
+	}
+
+	seen := make(map[string]bool)
+	checked := make([]string, 0, len(candidates))
+	var dll *syscall.DLL
+	var err error
+	for _, path := range candidates {
+		clean := filepath.Clean(path)
+		key := strings.ToLower(clean)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		checked = append(checked, clean)
+		if _, statErr := os.Stat(clean); statErr != nil {
+			continue
+		}
+		dll, err = syscall.LoadDLL(clean)
+		if err == nil {
+			break
+		}
+	}
+	if dll == nil {
+		if len(checked) == 0 {
+			return fmt.Errorf("ViGEmClient.dll could not be located")
+		}
+		return fmt.Errorf("ViGEmClient.dll could not be loaded; checked: %s", strings.Join(checked, "; "))
 	}
 	req := func(n string) (*syscall.Proc, error) { return dll.FindProc(n) }
 	if x.alloc, err = req("vigem_alloc"); err != nil {

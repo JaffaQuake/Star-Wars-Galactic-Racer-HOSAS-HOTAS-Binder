@@ -1,29 +1,48 @@
-GALACTIC RACER HOSAS / HOTAS BRIDGE - v1.9
+GALACTIC RACER HOSAS / HOTAS BRIDGE - v1.91
 by JaffaQuake and Mars
 ==========================================
 
-WHAT'S NEW IN v1.9
-------------------
-1. PER-STICK THROTTLE AXIS MODE FOR HOSAS
+WHAT'S NEW IN v1.91
+-------------------
+1. INSTALLER RELIABILITY HOTFIX
+   Fixed the clean-install ViGEmClient.dll lookup that could fail on an x64 path. The installer now
+   validates the DLL architecture instead of assuming an exact folder name.
+
+2. MORE FLEXIBLE WINDOWS PATHS
+   Local AppData, Desktop, and Start Menu locations are resolved through Windows special folders
+   instead of being constructed from hard-coded path patterns.
+
+3. MORE FLEXIBLE VIGEM DETECTION
+   ViGEmBus detection checks services, drivers, and PnP devices instead of relying on one exact
+   service name. The runtime can also find ViGEmClient.dll in the installed app folder when a local
+   development build does not have its own copy.
+
+4. SAFER LOCAL BUILDS
+   Build-Local.cmd now searches common Go installation locations when Go is not yet visible in PATH,
+   and gives clearer dependency diagnostics.
+
+FUNCTIONALITY RETAINED FROM v1.9
+--------------------------------
+- PER-STICK THROTTLE AXIS MODE FOR HOSAS
    Each HOSAS side now has its own "Throttle axis" checkbox. When enabled, that selected axis
    is treated as an absolute throttle lever with 0% = -1, 50% = neutral, and 100% = +1.
    This allows a throttle lever to substitute for either side of the two-input HOSAS driving model.
 
-2. OPEN-SOURCE RELEASE PACKAGING
+- OPEN-SOURCE RELEASE PACKAGING
    The project is now distributed under the GNU General Public License v3.0 or later.
    The release package includes the full license, third-party notices, matching source code,
    development/build instructions, and a quick-start guide.
 
-3. THIRD-PARTY LICENSE NOTICES
+- THIRD-PARTY LICENSE NOTICES
    THIRD_PARTY_NOTICES.txt documents the licenses for ViGEmClient, ViGEmBus, and the Go runtime.
    Those third-party components remain under their own licenses.
 
-4. SOURCE LICENSE HEADER
+- SOURCE LICENSE HEADER
    main.go now contains an SPDX GPL license identifier and copyright notice. This does not change
    application behavior; it makes the licensing of the source explicit.
 
-FUNCTIONALITY RETAINED FROM v1.8
---------------------------------
+OTHER FUNCTIONALITY RETAINED
+----------------------------
 - HOSAS / HOTAS Control Mode selector.
 - HOSAS differential steering and optional Hybrid Preserve Thrust.
 - HOTAS throttle -> Xbox RT and flight-stick X/Y -> Xbox Left Stick.
