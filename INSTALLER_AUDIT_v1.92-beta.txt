@@ -1,0 +1,66 @@
+GALACTIC RACER HOSAS / HOTAS BRIDGE — v1.92 Beta RELIABILITY AUDIT
+by JaffaQuake and Mars
+
+PURPOSE
+-------
+v1.92 Beta is a reliability hotfix focused on assumptions that worked on the original development PC but
+could fail on another Windows installation. No driving/control math was intentionally changed.
+
+FIXED / MADE MORE FLEXIBLE
+--------------------------
+1. ViGEmClient x64 selection
+   v1.9 assumed the extracted DLL path literally contained \x64\ and used a fragile regular
+   expression. v1.92 Beta instead validates the PE machine type and accepts any folder layout containing
+   a real AMD64 ViGEmClient.dll.
+
+2. Local AppData / Desktop / Start Menu paths
+   The installer and uninstaller now ask Windows for its special-folder locations rather than
+   constructing Start Menu paths from APPDATA or assuming LOCALAPPDATA is always populated.
+
+3. ViGEmBus detection
+   Detection no longer depends on one exact service name. It checks services, Windows system
+   drivers, and available PnP devices for ViGEm-related entries.
+
+4. ViGEmClient runtime lookup
+   The app still prefers ViGEmClient.dll beside the EXE, but local development builds can fall back
+   to the normal installed app directory. This reduces silent Xbox-output failures after rebuilding.
+
+5. Local Go build discovery
+   Build-Local.cmd checks PATH plus common Go installation locations before reporting that Go is
+   unavailable.
+
+6. Dependency extraction / cleanup
+   The installer checks for tar.exe before use, verifies the pinned archive checksum, validates the
+   selected DLL architecture, and cleans its temporary directory even if extraction fails.
+
+7. Shortcut creation
+   Shortcut failures are reported as warnings rather than making an otherwise successful application
+   install fail. Windows special folders are used for both Desktop and Programs.
+
+INTENTIONAL REQUIREMENTS / REMAINING ASSUMPTIONS
+------------------------------------------------
+These are not installer bugs, but they are useful limits to know about:
+
+- This release is Windows x64 only.
+- Xbox emulation still requires ViGEmClient + ViGEmBus.
+- The pinned vgamepad 0.1.0 archive and SHA-256 are intentional supply-chain controls.
+- Main HOSAS/HOTAS driving inputs still use WinMM and its six-axis view (X/Y/Z/R/U/V).
+- Saved WinMM joystick IDs can change if Windows reorders devices; Detect Left/Right and device
+  selectors remain the recovery path. A future persistent-device GUID migration would improve this.
+- XInput exposes at most four controller slots; the app detects the slot it actually receives rather
+  than assuming a specific one.
+- Keyboard output is limited to the keys exposed by the app's selectable/learned mappings.
+
+TEST STATUS
+-----------
+The Go source was cross-compiled successfully as a Windows amd64 GUI executable. Standard go vet
+continues to flag three unsafe.Pointer uses in the existing DirectInput COM interop; those are known
+low-level Windows interop sites and were not introduced by the v1.92 Beta installer changes.
+
+
+v1.92 Beta additions
+--------------------
+- Optional HidHide integration checks the official current Program Files layout and a legacy x64
+  subdirectory. HidHide itself is not bundled or automatically installed.
+- DirectInput is an optional axis-input backend; existing configs migrate to WinMM compatibility.
+- The application window is now resizable/scrollable without resizing individual controls.

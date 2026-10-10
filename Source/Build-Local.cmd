@@ -2,7 +2,7 @@
 setlocal EnableExtensions
 cd /d "%~dp0"
 
-echo Building Galactic Racer HOSAS / HOTAS Bridge v1.91...
+echo Building Galactic Racer HOSAS / HOTAS Bridge v1.92 Beta...
 
 set "GOEXE="
 for /f "delims=" %%G in ('where go.exe 2^>nul') do if not defined GOEXE set "GOEXE=%%G"
@@ -39,7 +39,7 @@ if not exist "ViGEmClient.dll" (
   ) else (
     echo.
     echo NOTE: No local ViGEmClient.dll was found.
-    echo The v1.91 runtime will also check the normal installed app folder when Start Mapping is pressed.
+    echo The v1.92 Beta runtime will also check the normal installed app folder when Start Mapping is pressed.
     echo If neither location has the DLL, virtual Xbox output will not start.
   )
 )

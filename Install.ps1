@@ -1,5 +1,5 @@
 $ErrorActionPreference = 'Stop'
-Write-Host "Galactic Racer HOSAS / HOTAS Bridge v1.91 installer" -ForegroundColor Cyan
+Write-Host "Galactic Racer HOSAS / HOTAS Bridge v1.92 Beta installer" -ForegroundColor Cyan
 
 function Get-LocalAppDataPath {
     $p = [Environment]::GetFolderPath('LocalApplicationData')
@@ -108,7 +108,7 @@ if (Test-Path -LiteralPath $sourceIcon) {
     Copy-Item -LiteralPath $sourceIcon -Destination (Join-Path $appDir 'GalacticRacerHOSAS.ico') -Force
 }
 
-foreach ($doc in @('LICENSE.txt','THIRD_PARTY_NOTICES.txt','QUICKSTART.txt','README.txt','INSTALLER_AUDIT_v1.91.txt')) {
+foreach ($doc in @('LICENSE.txt','THIRD_PARTY_NOTICES.txt','QUICKSTART.txt','README.txt','INSTALLER_AUDIT_v1.92-beta.txt','RELEASE_NOTES_v1.92-beta.txt','BUILD_VALIDATION_v1.92-beta.txt')) {
     $docPath = Join-Path $sourceDir $doc
     if (Test-Path -LiteralPath $docPath) {
         Copy-Item -LiteralPath $docPath -Destination (Join-Path $appDir $doc) -Force
@@ -179,12 +179,16 @@ if (-not $driverReady) {
     $winget = Get-Command winget.exe -ErrorAction SilentlyContinue
     if ($winget) {
         $wingetPath = $winget.Source
-        & $wingetPath install --id ViGEm.ViGEmBus -e --accept-package-agreements --accept-source-agreements
+        & $wingetPath install --id ViGEm.ViGEmBus -e --silent --accept-package-agreements --accept-source-agreements
         if ($LASTEXITCODE -ne 0) {
             Write-Warning "winget returned exit code $LASTEXITCODE while installing ViGEmBus."
         }
-        Start-Sleep -Milliseconds 500
-        $driverReady = Test-ViGEmBusInstalled
+        # Driver registration can lag behind the package process. Retry rather than assuming that
+        # a half-second pause is enough on every Windows machine.
+        for ($i = 0; $i -lt 10 -and -not $driverReady; $i++) {
+            Start-Sleep -Seconds 1
+            $driverReady = Test-ViGEmBusInstalled
+        }
     } else {
         Write-Warning 'winget was not found. ViGEmBus must be installed manually before virtual Xbox output can work.'
     }
@@ -193,7 +197,7 @@ if (-not $driverReady) {
 if ($driverReady) {
     Write-Host 'ViGEmBus driver: detected' -ForegroundColor Green
 } else {
-    Write-Warning 'ViGEmBus could not be confirmed. The application will install, but virtual Xbox output may not work until the driver is installed.'
+    Write-Warning 'ViGEmBus could not be confirmed after installation/retry. The application will install, but virtual Xbox output may require a Windows restart or manual ViGEmBus installation.'
 }
 
 # Desktop + Start Menu shortcuts. Resolve Windows special folders rather than constructing paths.
@@ -208,6 +212,6 @@ Write-Host ''
 Write-Host 'Installed successfully. Existing controller settings were preserved.' -ForegroundColor Green
 Write-Host "App folder: $appDir"
 if (-not $driverReady) {
-    Write-Host 'NOTE: ViGEmBus was not confirmed, so Start Mapping may report an Xbox-output error until the driver is installed.' -ForegroundColor Yellow
+    Write-Host 'NOTE: ViGEmBus was not confirmed. Restart Windows first; if Start Mapping still fails, install/repair ViGEmBus 1.22.0 manually.' -ForegroundColor Yellow
 }
 Start-Process -FilePath $installedExe -WorkingDirectory $appDir

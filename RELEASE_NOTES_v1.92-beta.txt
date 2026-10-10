@@ -1,0 +1,13 @@
+v1.92 Beta — Release Notes
+
+- Added Auto / DirectInput / WinMM axis input backends.
+- Existing configuration files migrate to WinMM compatibility to avoid changing known-good setups.
+- DirectInput adds Rx/Ry/Rz and Slider 1/2 to flight-axis selectors.
+- Renamed control modes to HOSAS / Podracer Style and HOTAS / Traditional Steering.
+- Added optional HidHide Setup helper for double-input troubleshooting.
+- Made the Win32 window resizable/maximizable with fixed-size content and scroll bars when needed.
+- Kept ViGEm/XInput output unchanged in this beta.
+- Learned button/hat mappings continue to use WinMM for stability.
+
+Beta note: DirectInput support is deliberately isolated to analog flight-axis input so users can
+switch back to the existing WinMM path immediately if a particular device behaves unexpectedly.

@@ -127,3 +127,17 @@ redistributed by this project merely by calling those APIs.
 If future versions add or bundle additional third-party libraries, drivers,
 assets, or binaries, update this file with the applicable copyright notices
 and license terms before distribution.
+
+
+===============================================================================
+4. HidHide (optional external integration; not bundled)
+===============================================================================
+
+Project:
+https://github.com/nefarius/HidHide
+
+License: MIT
+
+v1.92 Beta can detect an existing HidHide installation, register the mapper on its application
+allowlist through HidHideCLI.exe, and open HidHide Configuration Client. HidHide is not included
+or redistributed in this package.

@@ -1,0 +1,14 @@
+Galactic Racer HOSAS / HOTAS Bridge v1.92 Beta
+Build validation
+
+- Go source formatted with gofmt.
+- Windows amd64 GUI executable cross-compiled successfully with Go 1.23.2.
+- Output validated as PE32+ x86-64 Windows GUI executable.
+- Release EXE SHA-256: bd41afcd18d237358f32200ad8a342af193aa23689efd8b49c5196f68bcd9dc2
+- go vet reports the same three unsafe.Pointer warnings in the existing low-level DirectInput COM bridge.
+  These warnings are expected for the manual COM-vtable interop and are not build failures.
+
+Hardware note:
+This environment cannot physically exercise DirectInput devices, HidHide, ViGEmBus, or the Win32
+resize/scroll behavior. v1.92 is labeled Beta specifically so the new DirectInput and HidHide helper
+paths can be tested while WinMM remains available as the compatibility backend.
