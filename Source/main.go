@@ -33,7 +33,7 @@ import (
 var embeddedAppIcon []byte
 
 const (
-	appTitle = "Galactic Racer HOSAS / HOTAS Bridge v1.98.3 — by JaffaQuake and Mars"
+	appTitle = "Galactic Racer HOSAS / HOTAS Bridge v2.1.7 — by JaffaQuake and Mars"
 
 	WS_OVERLAPPED  = 0x00000000
 	WS_CAPTION     = 0x00C00000
@@ -61,33 +61,39 @@ const (
 	TTM_ADDTOOLW       = 0x0432
 	TTM_SETMAXTIPWIDTH = 0x0418
 
-	BS_PUSHBUTTON    = 0x00000000
-	BS_MULTILINE     = 0x00002000
-	BS_AUTOCHECKBOX  = 0x00000003
-	CBS_DROPDOWNLIST = 0x00000003
-	LBS_NOTIFY       = 0x00000001
-	ES_NUMBER        = 0x00002000
-	SS_LEFT          = 0x00000000
+	BS_PUSHBUTTON      = 0x00000000
+	BS_MULTILINE       = 0x00002000
+	BS_AUTORADIOBUTTON = 0x00000009
+	BS_PUSHLIKE        = 0x00001000
+	WS_GROUP           = 0x00020000
+	BS_AUTOCHECKBOX    = 0x00000003
+	CBS_DROPDOWNLIST   = 0x00000003
+	LBS_NOTIFY         = 0x00000001
+	ES_NUMBER          = 0x00002000
+	SS_LEFT            = 0x00000000
 
 	CW_USEDEFAULT     = ^uintptr(0x7fffffff)
 	SW_HIDE           = 0
 	SW_SHOWNOACTIVATE = 4
 	SW_SHOW           = 5
 
-	WM_CREATE       = 0x0001
-	WM_DESTROY      = 0x0002
-	WM_SIZE         = 0x0005
-	WM_CLOSE        = 0x0010
-	WM_LBUTTONDOWN  = 0x0201
-	WM_MOUSEWHEEL   = 0x020A
-	WM_PARENTNOTIFY = 0x0210
-	WM_COMMAND      = 0x0111
-	WM_HSCROLL      = 0x0114
-	WM_VSCROLL      = 0x0115
-	WM_TIMER        = 0x0113
-	WM_SETFONT      = 0x0030
-	WM_SETICON      = 0x0080
-	WM_APP          = 0x8000
+	WM_CREATE         = 0x0001
+	WM_SETTEXT        = 0x000C
+	WM_DESTROY        = 0x0002
+	WM_SIZE           = 0x0005
+	WM_CLOSE          = 0x0010
+	WM_LBUTTONDOWN    = 0x0201
+	WM_MOUSEWHEEL     = 0x020A
+	WM_PARENTNOTIFY   = 0x0210
+	WM_NOTIFY         = 0x004E
+	WM_COMMAND        = 0x0111
+	WM_HSCROLL        = 0x0114
+	WM_VSCROLL        = 0x0115
+	WM_TIMER          = 0x0113
+	WM_SETFONT        = 0x0030
+	WM_CTLCOLORSTATIC = 0x0138
+	WM_SETICON        = 0x0080
+	WM_APP            = 0x8000
 
 	WM_APP_STATUS = WM_APP + 1
 	WM_APP_DETECT = WM_APP + 2
@@ -114,6 +120,15 @@ const (
 	CB_RESETCONTENT = 0x014B
 	CB_GETCURSEL    = 0x0147
 	CB_SETCURSEL    = 0x014E
+	CB_SHOWDROPDOWN = 0x014F
+	CB_GETCOUNT     = 0x0146
+	TCM_FIRST       = 0x1300
+	TCM_GETCURSEL   = TCM_FIRST + 11
+	TCM_ADJUSTRECT  = TCM_FIRST + 40
+	TCM_SETCURSEL   = TCM_FIRST + 12
+	TCM_INSERTITEMW = TCM_FIRST + 62
+	TCIF_TEXT       = 0x0001
+	TCN_SELCHANGE   = -551
 	LB_ADDSTRING    = 0x0180
 	LB_RESETCONTENT = 0x0184
 	LB_GETCURSEL    = 0x0188
@@ -237,7 +252,6 @@ const (
 	idSave
 	idRefresh
 	idHidHideSetup
-	idHidHideStatus
 	idMonitor
 	idStatus
 	idXInputReadback
@@ -278,8 +292,37 @@ const (
 	idTwistRightKeyThreshold
 	idTwistLeftOutputNegative
 	idTwistRightOutputNegative
-	idComboList = 1700
-	idLearnBase = 1200
+	idAxisTuning
+	idSocialLinks
+	idMonitorDuringGameplay
+	idMappedThumbstick
+	idMappingsTab    = 1720
+	idCalibrationTab = 1721
+	idRightPanelTabs = 1722
+	idLearnBase      = 1200
+)
+
+const (
+	idWheelDevice = 1800 + iota
+	idWheelAxis
+	idWheelInvert
+	idWheelDetect
+	idWheelPedal1Device
+	idWheelPedal1Axis
+	idWheelPedal1Invert
+	idWheelPedal1Detect
+	idWheelPedal2Device
+	idWheelPedal2Axis
+	idWheelPedal2Invert
+	idWheelPedal2Detect
+	idWheelPedal3Device
+	idWheelPedal3Axis
+	idWheelPedal3Invert
+	idWheelPedal3Detect
+	idWheelPedal3Mode
+	idWheelHandbrakeButton
+	idWheelHandbrakeLearn
+	idWheelHandbrakeDetect
 )
 
 const (
@@ -289,6 +332,23 @@ const (
 	idLearnClearBase    = 1600
 	idWASDClearBase     = 1650
 )
+
+// Native Windows tab control notifications and item descriptors (Win64 layout).
+type tabNotifyHeader struct {
+	HwndFrom uintptr
+	IDFrom   uintptr
+	Code     int32
+	_        uint32
+}
+type tabControlItem struct {
+	Mask      uint32
+	State     uint32
+	StateMask uint32
+	Text      *uint16
+	TextMax   int32
+	Image     int32
+	Param     uintptr
+}
 
 type point struct{ X, Y int32 }
 type msg struct {
@@ -436,6 +496,38 @@ func validateAuxiliaryAxis(v *auxiliaryAxisConfig, present bool, maxAxis int) {
 	}
 }
 
+// Existing v1.98.x shared deadzone migrates to independent axis profiles.
+// Legacy fields are preserved in JSON for safe downgrade, but v1.99 applies
+// the new profile values during live controller processing.
+func initAxisProfiles(c *config) {
+	if c.Tuning == nil {
+		c.Tuning = make(map[string]axisTuneProfile)
+	}
+	for _, entry := range axisTuneNames {
+		if p, ok := c.Tuning[entry.Key]; ok {
+			c.Tuning[entry.Key] = checkedAxisTune(p)
+			continue
+		}
+		dz := 0
+		switch entry.Key {
+		case profileHOSASLeft, profileHOSASRight, profileHOTASX, profileHOTASY, profilePedal, profileWheelSteering, profileWheelPedal1, profileWheelPedal2, profileWheelPedal3, profileWheelHandbrake:
+			dz = c.Deadzone
+		case profileTwistLeft:
+			dz = c.TwistLeft.Deadzone
+		case profileTwistRight:
+			dz = c.TwistRight.Deadzone
+		}
+		c.Tuning[entry.Key] = defaultAxisTune(dz)
+	}
+}
+
+func profileFromConfig(c config, key string) axisTuneProfile {
+	if p, ok := c.Tuning[key]; ok {
+		return checkedAxisTune(p)
+	}
+	return defaultAxisTune(0)
+}
+
 func normalizeAuxiliaryValue(centered float64, v auxiliaryAxisConfig, deadzone int) float64 {
 	if normalizeAxisType(v.AxisType) == "Lever" {
 		out := clamp((centered+1)/2, 0, 1)
@@ -458,75 +550,137 @@ func normalizeAuxiliaryValue(centered float64, v auxiliaryAxisConfig, deadzone i
 	return applyDeadzone(centered, deadzone)
 }
 
+type wheelAxisConfig struct {
+	DeviceID int    `json:"device_id"`
+	DIGUID   string `json:"di_guid"`
+	Axis     int    `json:"axis"`
+	Invert   bool   `json:"invert"`
+}
+type drivingWheelConfig struct {
+	Wheel           wheelAxisConfig `json:"wheel"`
+	Pedal1          wheelAxisConfig `json:"pedal_1"`
+	Pedal2          wheelAxisConfig `json:"pedal_2"`
+	Pedal3          wheelAxisConfig `json:"pedal_3"`
+	Pedal3Mode      string          `json:"pedal_3_mode"`
+	Handbrake       wheelAxisConfig `json:"handbrake"`
+	HandbrakeMode   string          `json:"handbrake_mode"`
+	HandbrakeButton bool            `json:"handbrake_button"`
+}
+
+func defaultDrivingWheel() drivingWheelConfig {
+	none := wheelAxisConfig{DeviceID: -1}
+	return drivingWheelConfig{Wheel: none, Pedal1: none, Pedal2: none, Pedal3: none, Handbrake: none, Pedal3Mode: "Off", HandbrakeMode: "Drift"}
+}
+func normalizeDrivingWheel(c *drivingWheelConfig, present bool, maxAxis int) {
+	if !present {
+		*c = defaultDrivingWheel()
+		return
+	}
+	for _, v := range []*wheelAxisConfig{&c.Wheel, &c.Pedal1, &c.Pedal2, &c.Pedal3, &c.Handbrake} {
+		if v.DeviceID < -1 {
+			v.DeviceID = -1
+		}
+		if v.Axis < 0 || v.Axis > maxAxis {
+			v.Axis = 0
+		}
+	}
+	switch c.Pedal3Mode {
+	case "Off", "Boost", "Drift":
+	default:
+		c.Pedal3Mode = "Off"
+	}
+	if c.HandbrakeMode != "Boost" && c.HandbrakeMode != "Drift" {
+		c.HandbrakeMode = "Drift"
+	}
+}
+
+func axisDigitalButtons(mode string, value float64) uint16 {
+	switch digitalAxisAction(mode, value) {
+	case "Boost":
+		return XUSB_A
+	case "Drift":
+		return XUSB_X
+	}
+	return 0
+}
+
+func drivingPedals(accel, brake float64) (byte, byte) {
+	return pedalTriggerByte(accel), pedalTriggerByte(brake)
+}
+
 type config struct {
-	InputBackend           string              `json:"input_backend"`
-	ControlMode            string              `json:"control_mode"`
-	HotasThrottleID        int                 `json:"hotas_throttle_id"`
-	HotasThrottleDIGUID    string              `json:"hotas_throttle_di_guid"`
-	HotasThrottleAxis      int                 `json:"hotas_throttle_axis"`
-	HotasThrottleInvert    bool                `json:"hotas_throttle_invert"`
-	HotasBrakeBehavior     string              `json:"hotas_brake_behavior"`
-	HotasBrakeThreshold    int                 `json:"hotas_brake_threshold"`
-	HotasBrakeZone         int                 `json:"hotas_brake_zone"`
-	HotasStickID           int                 `json:"hotas_stick_id"`
-	HotasStickDIGUID       string              `json:"hotas_stick_di_guid"`
-	HotasStickXAxis        int                 `json:"hotas_stick_x_axis"`
-	HotasStickYAxis        int                 `json:"hotas_stick_y_axis"`
-	HotasStickInvertX      bool                `json:"hotas_stick_invert_x"`
-	HotasStickInvertY      bool                `json:"hotas_stick_invert_y"`
-	LeftID                 int                 `json:"left_id"`
-	LeftDIGUID             string              `json:"left_di_guid"`
-	RightID                int                 `json:"right_id"`
-	RightDIGUID            string              `json:"right_di_guid"`
-	PedalID                int                 `json:"pedal_id"`
-	PedalDIGUID            string              `json:"pedal_di_guid"`
-	TwistLeft              auxiliaryAxisConfig `json:"twist_left"`
-	TwistRight             auxiliaryAxisConfig `json:"twist_right"`
-	LeftAxis               int                 `json:"left_axis"`
-	RightAxis              int                 `json:"right_axis"`
-	PedalAxis              int                 `json:"pedal_axis"`
-	LeftInvert             bool                `json:"left_invert"`
-	RightInvert            bool                `json:"right_invert"`
-	LeftThrottleMode       bool                `json:"left_throttle_mode"`
-	RightThrottleMode      bool                `json:"right_throttle_mode"`
-	PedalInvert            bool                `json:"pedal_invert"`
-	PedalMode              string              `json:"pedal_mode"`
-	Deadzone               int                 `json:"deadzone"`
-	Bindings               map[string]binding  `json:"bindings"`
-	PreserveThrust         bool                `json:"preserve_thrust"`
-	PedalSteerStrength     int                 `json:"pedal_steer_strength"`
-	CameraSensitivity      int                 `json:"camera_sensitivity"`
-	CameraDeadzone         int                 `json:"camera_deadzone"`
-	PedalLeftKey           int                 `json:"pedal_left_key"`
-	PedalRightKey          int                 `json:"pedal_right_key"`
-	PedalKeyThreshold      int                 `json:"pedal_key_threshold"`
-	ThumbWASDEnabled       bool                `json:"thumb_wasd_enabled"`
-	ThumbWASDDeviceID      int                 `json:"thumb_wasd_device_id"`
-	ThumbWASDSideAxis      int                 `json:"thumb_wasd_side_axis"`
-	ThumbWASDForwardAxis   int                 `json:"thumb_wasd_forward_axis"`
-	ThumbWASDInvertSide    bool                `json:"thumb_wasd_invert_side"`
-	ThumbWASDInvertForward bool                `json:"thumb_wasd_invert_forward"`
-	ThumbWASDThreshold     int                 `json:"thumb_wasd_threshold"`
-	ThumbWASDUseRawHID     bool                `json:"thumb_wasd_use_raw_hid"`
-	ThumbHIDSidePath       string              `json:"thumb_hid_side_path"`
-	ThumbHIDForwardPath    string              `json:"thumb_hid_forward_path"`
-	ThumbHIDSideUsage      int                 `json:"thumb_hid_side_usage"`
-	ThumbHIDForwardUsage   int                 `json:"thumb_hid_forward_usage"`
-	ThumbHIDSideCenter     int32               `json:"thumb_hid_side_center"`
-	ThumbHIDForwardCenter  int32               `json:"thumb_hid_forward_center"`
-	ThumbHIDSideSpan       int32               `json:"thumb_hid_side_span"`
-	ThumbHIDForwardSpan    int32               `json:"thumb_hid_forward_span"`
-	OnFootMode             string              `json:"on_foot_mode"`
-	ThumbDISideGUID        string              `json:"thumb_di_side_guid"`
-	ThumbDIForwardGUID     string              `json:"thumb_di_forward_guid"`
-	ThumbDIDeviceName      string              `json:"thumb_di_device_name"`
-	ThumbDISideAxis        int                 `json:"thumb_di_side_axis"`
-	ThumbDIForwardAxis     int                 `json:"thumb_di_forward_axis"`
-	ThumbDISideCenter      int32               `json:"thumb_di_side_center"`
-	ThumbDIForwardCenter   int32               `json:"thumb_di_forward_center"`
-	ThumbDISideSpan        int32               `json:"thumb_di_side_span"`
-	ThumbDIForwardSpan     int32               `json:"thumb_di_forward_span"`
-	PollingHz              int                 `json:"polling_hz"`
+	DrivingWheel           drivingWheelConfig         `json:"driving_wheel"`
+	InputBackend           string                     `json:"input_backend"`
+	ControlMode            string                     `json:"control_mode"`
+	HotasThrottleID        int                        `json:"hotas_throttle_id"`
+	HotasThrottleDIGUID    string                     `json:"hotas_throttle_di_guid"`
+	HotasThrottleAxis      int                        `json:"hotas_throttle_axis"`
+	HotasThrottleInvert    bool                       `json:"hotas_throttle_invert"`
+	HotasBrakeBehavior     string                     `json:"hotas_brake_behavior"`
+	HotasBrakeThreshold    int                        `json:"hotas_brake_threshold"`
+	HotasBrakeZone         int                        `json:"hotas_brake_zone"`
+	HotasStickID           int                        `json:"hotas_stick_id"`
+	HotasStickDIGUID       string                     `json:"hotas_stick_di_guid"`
+	HotasStickXAxis        int                        `json:"hotas_stick_x_axis"`
+	HotasStickYAxis        int                        `json:"hotas_stick_y_axis"`
+	HotasStickInvertX      bool                       `json:"hotas_stick_invert_x"`
+	HotasStickInvertY      bool                       `json:"hotas_stick_invert_y"`
+	LeftID                 int                        `json:"left_id"`
+	LeftDIGUID             string                     `json:"left_di_guid"`
+	RightID                int                        `json:"right_id"`
+	RightDIGUID            string                     `json:"right_di_guid"`
+	PedalID                int                        `json:"pedal_id"`
+	PedalDIGUID            string                     `json:"pedal_di_guid"`
+	TwistLeft              auxiliaryAxisConfig        `json:"twist_left"`
+	TwistRight             auxiliaryAxisConfig        `json:"twist_right"`
+	LeftAxis               int                        `json:"left_axis"`
+	RightAxis              int                        `json:"right_axis"`
+	PedalAxis              int                        `json:"pedal_axis"`
+	LeftInvert             bool                       `json:"left_invert"`
+	RightInvert            bool                       `json:"right_invert"`
+	LeftThrottleMode       bool                       `json:"left_throttle_mode"`
+	RightThrottleMode      bool                       `json:"right_throttle_mode"`
+	PedalInvert            bool                       `json:"pedal_invert"`
+	PedalMode              string                     `json:"pedal_mode"`
+	Deadzone               int                        `json:"deadzone"`
+	Tuning                 map[string]axisTuneProfile `json:"axis_tuning,omitempty"`
+	Bindings               map[string]binding         `json:"bindings"`
+	PreserveThrust         bool                       `json:"preserve_thrust"`
+	PreserveThrustV2       bool                       `json:"preserve_thrust_v2_initialized,omitempty"`
+	PedalSteerStrength     int                        `json:"pedal_steer_strength"`
+	CameraSensitivity      int                        `json:"camera_sensitivity"`
+	CameraDeadzone         int                        `json:"camera_deadzone"`
+	PedalLeftKey           int                        `json:"pedal_left_key"`
+	PedalRightKey          int                        `json:"pedal_right_key"`
+	PedalKeyThreshold      int                        `json:"pedal_key_threshold"`
+	ThumbWASDEnabled       bool                       `json:"thumb_wasd_enabled"`
+	ThumbWASDDeviceID      int                        `json:"thumb_wasd_device_id"`
+	ThumbWASDSideAxis      int                        `json:"thumb_wasd_side_axis"`
+	ThumbWASDForwardAxis   int                        `json:"thumb_wasd_forward_axis"`
+	ThumbWASDInvertSide    bool                       `json:"thumb_wasd_invert_side"`
+	ThumbWASDInvertForward bool                       `json:"thumb_wasd_invert_forward"`
+	ThumbWASDThreshold     int                        `json:"thumb_wasd_threshold"`
+	ThumbWASDUseRawHID     bool                       `json:"thumb_wasd_use_raw_hid"`
+	ThumbHIDSidePath       string                     `json:"thumb_hid_side_path"`
+	ThumbHIDForwardPath    string                     `json:"thumb_hid_forward_path"`
+	ThumbHIDSideUsage      int                        `json:"thumb_hid_side_usage"`
+	ThumbHIDForwardUsage   int                        `json:"thumb_hid_forward_usage"`
+	ThumbHIDSideCenter     int32                      `json:"thumb_hid_side_center"`
+	ThumbHIDForwardCenter  int32                      `json:"thumb_hid_forward_center"`
+	ThumbHIDSideSpan       int32                      `json:"thumb_hid_side_span"`
+	ThumbHIDForwardSpan    int32                      `json:"thumb_hid_forward_span"`
+	OnFootMode             string                     `json:"on_foot_mode"`
+	ThumbDISideGUID        string                     `json:"thumb_di_side_guid"`
+	ThumbDIForwardGUID     string                     `json:"thumb_di_forward_guid"`
+	ThumbDIDeviceName      string                     `json:"thumb_di_device_name"`
+	ThumbDISideAxis        int                        `json:"thumb_di_side_axis"`
+	ThumbDIForwardAxis     int                        `json:"thumb_di_forward_axis"`
+	ThumbDISideCenter      int32                      `json:"thumb_di_side_center"`
+	ThumbDIForwardCenter   int32                      `json:"thumb_di_forward_center"`
+	ThumbDISideSpan        int32                      `json:"thumb_di_side_span"`
+	ThumbDIForwardSpan     int32                      `json:"thumb_di_forward_span"`
+	PollingHz              int                        `json:"polling_hz"`
+	MonitorDuringGameplay  bool                       `json:"monitor_during_gameplay"`
 }
 
 type xusbReport struct {
@@ -1258,64 +1412,92 @@ type xboxBridge struct {
 }
 
 type appState struct {
-	hwnd      uintptr
-	font      uintptr
-	cfgMu     sync.RWMutex
-	cfg       config
-	devicesMu sync.RWMutex
-	devices   []deviceInfo
+	hwnd       uintptr
+	font       uintptr
+	headerFont uintptr
+	actionFont uintptr
+	testFont   uintptr
+	cfgMu      sync.RWMutex
+	cfg        config
+	devicesMu  sync.RWMutex
+	devices    []deviceInfo
 
 	controls         map[int]uintptr
 	deviceComboIDs   map[int][]int
 	deviceComboGUIDs map[int][]string
 	axisNames        []string
 
-	uiReady                bool
-	visualsPaused          bool
-	mappingActive          atomic.Bool
-	mappingStarting        atomic.Bool
-	xboxReady              atomic.Bool
-	xboxSlot               atomic.Int32
-	testUntilMu            sync.RWMutex
-	testUntil              time.Time
-	cameraTestMu           sync.RWMutex
-	cameraTestUntil        time.Time
-	cameraTestValue        float64
-	monitorMu              sync.RWMutex
-	monitor                monitorState
-	keyboardMu             sync.Mutex
-	keyboardDown           map[uint16]bool
-	tooltipHwnd            uintptr
-	tooltipTexts           []*uint16
-	tooltipHelp            map[uintptr]string
-	tooltipPopup           uintptr // legacy field; v1.96 renders help inside the main window
-	tooltipHover           uintptr
-	comboOptions           map[int][]string
-	comboSelected          map[int]int
-	comboList              uintptr
-	comboActiveID          int
-	comboHidden            []uintptr // controls temporarily hidden beneath the in-window selector
-	baseRects              map[uintptr]rect
-	scrollX                int
-	scrollY                int
-	contentWidth           int
-	contentHeight          int
-	controlHOSASGroup      []uintptr
-	controlHOTASGroup      []uintptr
-	hotasBrakeDigitalGroup []uintptr
-	hotasBrakeAnalogGroup  []uintptr
-	hosasDrivingGroup      []uintptr
-	pedalFineGroup         []uintptr
-	pedalCameraGroup       []uintptr
-	pedalKeyGroup          []uintptr
-	twistLeftFineGroup     []uintptr
-	twistLeftCameraGroup   []uintptr
-	twistLeftKeyGroup      []uintptr
-	twistRightFineGroup    []uintptr
-	twistRightCameraGroup  []uintptr
-	twistRightKeyGroup     []uintptr
-	onFootThumbGroup       []uintptr
-	onFootButtonGroup      []uintptr
+	uiReady                  bool
+	visualsPaused            bool
+	mappingActive            atomic.Bool
+	mappingStarting          atomic.Bool
+	xboxReady                atomic.Bool
+	xboxSlot                 atomic.Int32
+	testUntilMu              sync.RWMutex
+	testUntil                time.Time
+	cameraTestMu             sync.RWMutex
+	cameraTestUntil          time.Time
+	cameraTestValue          float64
+	monitorMu                sync.RWMutex
+	monitor                  monitorState
+	keyboardMu               sync.Mutex
+	keyboardDown             map[uint16]bool
+	tooltipHwnd              uintptr
+	tooltipTexts             []*uint16
+	tooltipHelp              map[uintptr]string
+	tooltipPopup             uintptr // legacy field; v1.96 renders help inside the main window
+	tooltipHover             uintptr
+	comboOptions             map[int][]string
+	comboSelected            map[int]int
+	baseRects                map[uintptr]rect
+	scrollX                  int
+	scrollY                  int
+	contentWidth             int
+	contentHeight            int
+	tuning                   *axisTuningPopup
+	activeRightTab           int // 0 = mappings, 1 = embedded tuning; never persisted
+	mappingTabGroup          []uintptr
+	calibrationTabGroup      []uintptr
+	monitorLeftHeading       uintptr
+	monitorRightHeading      uintptr
+	monitorLeftForwardAxis   uintptr
+	monitorLeftBackwardAxis  uintptr
+	monitorRightForwardAxis  uintptr
+	monitorRightBackwardAxis uintptr
+	tuningDirty              bool
+	tuningSaveDue            time.Time
+	controlHOSASGroup        []uintptr
+	hosasLeftDetailGroup     []uintptr
+	hosasRightDetailGroup    []uintptr
+	hotasThrottleDetailGroup []uintptr
+	hotasStickDetailGroup    []uintptr
+	pedalDetailGroup         []uintptr
+	twistLeftDetailGroup     []uintptr
+	twistRightDetailGroup    []uintptr
+	controlHOTASGroup        []uintptr
+	controlWheelGroup        []uintptr
+	drivingWheelDetails      [4][]uintptr
+	handbrakeTitle           uintptr
+	pedalDeviceLabel         uintptr
+	handbrakeShiftHandles    []uintptr
+	drivingShiftHandles      []uintptr
+	drivingShifted           bool
+	handbrakeButtonGroup     []uintptr
+	hotasBrakeDigitalGroup   []uintptr
+	hotasBrakeAnalogGroup    []uintptr
+	hosasDrivingGroup        []uintptr
+	cameraTestGroup          []uintptr
+	pedalFineGroup           []uintptr
+	pedalCameraGroup         []uintptr
+	pedalKeyGroup            []uintptr
+	twistLeftFineGroup       []uintptr
+	twistLeftCameraGroup     []uintptr
+	twistLeftKeyGroup        []uintptr
+	twistRightFineGroup      []uintptr
+	twistRightCameraGroup    []uintptr
+	twistRightKeyGroup       []uintptr
+	onFootThumbGroup         []uintptr
+	onFootButtonGroup        []uintptr
 
 	xbox     xboxBridge
 	hid      hidManager
@@ -1379,6 +1561,10 @@ var (
 	procCreateIconFromResourceEx = user32.NewProc("CreateIconFromResourceEx")
 	procGetModuleHandleW         = kernel32.NewProc("GetModuleHandleW")
 	procGetStockObject           = gdi32.NewProc("GetStockObject")
+	procSetBkColor               = gdi32.NewProc("SetBkColor")
+	procGetSysColorBrush         = user32.NewProc("GetSysColorBrush")
+	procGetSysColor              = user32.NewProc("GetSysColor")
+	procCreateFontW              = gdi32.NewProc("CreateFontW")
 	procInitCommonControlsEx     = comctl32.NewProc("InitCommonControlsEx")
 
 	// WinMM device enumeration/capability probing is intentionally isolated in
@@ -1401,6 +1587,27 @@ var (
 )
 
 var wndProcCallback = syscall.NewCallback(wndProc)
+
+// The main chrome uses the chosen lighter neutral grey, while the native
+// tab frame/content and Windows widgets keep their system theme colors.
+// The window-class brush stays alive until the window closes.
+var mainBackgroundBrush uintptr
+
+const mainBackgroundColor = 0x00D4D4D4 // Win32 COLORREF: RGB(212,212,212) / #D4D4D4
+
+func isRightTabTextControl(a *appState, ctrl uintptr) bool {
+	for _, h := range a.mappingTabGroup {
+		if h == ctrl {
+			return true
+		}
+	}
+	for _, h := range a.calibrationTabGroup {
+		if h == ctrl {
+			return true
+		}
+	}
+	return false
+}
 
 var buttonOutputs = []struct {
 	Key, Label string
@@ -1854,8 +2061,8 @@ func main() {
 		deviceComboIDs:   make(map[int][]int),
 		deviceComboGUIDs: make(map[int][]string),
 		baseRects:        make(map[uintptr]rect),
-		contentWidth:     1130,
-		contentHeight:    1740,
+		contentWidth:     1680,
+		contentHeight:    1110,
 		axisNames:        []string{"X", "Y", "Z", "X Rotation (R)", "Y Rotation (U)", "Z Rotation (V)"},
 		tooltipHelp:      make(map[uintptr]string),
 		keyboardDown:     make(map[uint16]bool),
@@ -1864,6 +2071,7 @@ func main() {
 	app.xboxSlot.Store(-1)
 	app.cfg = defaultConfig()
 	loadConfig(&app.cfg)
+	initAxisProfiles(&app.cfg)
 	// v1.96.1: do not probe legacy WinMM joystick slots during normal Auto/DirectInput startup.
 	// WinMM device-capability queries are isolated in GalacticRacerWinMMHelper.exe and
 	// are only requested when compatibility mode actually needs them.
@@ -1873,6 +2081,9 @@ func main() {
 	}
 
 	hInstance, _, _ := procGetModuleHandleW.Call(0)
+	// Window background color is application-level chrome, not a recolor of
+	// the native controls, so Windows' standard widgets retain their theme.
+	mainBackgroundBrush, _, _ = procCreateSolidBrush.Call(mainBackgroundColor)
 	cursor, _, _ := procLoadCursorW.Call(0, uintptr(IDC_ARROW))
 	bigIcon := iconFromICO(embeddedAppIcon, 256)
 	smallIcon := iconFromICO(embeddedAppIcon, 32)
@@ -1883,7 +2094,7 @@ func main() {
 		HInstance:     hInstance,
 		HIcon:         bigIcon,
 		HCursor:       cursor,
-		HbrBackground: uintptr(COLOR_BTNFACE + 1),
+		HbrBackground: mainBackgroundBrush,
 		LpszClassName: className,
 		HIconSm:       smallIcon,
 	}
@@ -1893,7 +2104,7 @@ func main() {
 	style := uintptr(WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_THICKFRAME | WS_VSCROLL | WS_HSCROLL)
 	hwnd, _, e := procCreateWindowExW.Call(
 		0, uintptr(unsafe.Pointer(className)), uintptr(unsafe.Pointer(utf16ptr(appTitle))), style,
-		CW_USEDEFAULT, CW_USEDEFAULT, 1160, 900, 0, 0, hInstance, 0,
+		CW_USEDEFAULT, CW_USEDEFAULT, 1860, 1120, 0, 0, hInstance, 0,
 	)
 	if hwnd == 0 {
 		panic(fmt.Sprintf("CreateWindowExW failed: %v", e))
@@ -1915,7 +2126,6 @@ func main() {
 		app.updateContextVisibility()
 	}
 	app.updateScrollbars()
-	app.refreshHidHideUI()
 
 	app.pollWG.Add(1)
 	go app.pollLoop()
@@ -1935,19 +2145,25 @@ func main() {
 	app.releaseAllKeyboardOutputs()
 	app.xbox.Stop()
 	app.di.Stop()
+	if mainBackgroundBrush != 0 {
+		procDeleteObject.Call(mainBackgroundBrush)
+		mainBackgroundBrush = 0
+	}
 }
 
 func defaultConfig() config {
 	return config{
 		InputBackend:    "Auto",
 		ControlMode:     "HOSAS",
+		DrivingWheel:    defaultDrivingWheel(),
 		HotasThrottleID: -1, HotasThrottleAxis: 1, HotasBrakeBehavior: "Digital at Idle", HotasBrakeThreshold: 5, HotasBrakeZone: 20,
 		HotasStickID: -1, HotasStickXAxis: 0, HotasStickYAxis: 1,
 		LeftID: 0, RightID: 1, PedalID: -1,
 		TwistLeft: defaultAuxiliaryAxis(), TwistRight: defaultAuxiliaryAxis(),
 		LeftAxis: 1, RightAxis: 1, PedalAxis: 0,
 		PedalMode: "Off", Deadzone: 6,
-		PreserveThrust:         false,
+		PreserveThrust:         true,
+		PreserveThrustV2:       true,
 		PedalSteerStrength:     30,
 		CameraSensitivity:      100,
 		CameraDeadzone:         6,
@@ -1966,6 +2182,7 @@ func defaultConfig() config {
 		ThumbDISideAxis:        3,
 		ThumbDIForwardAxis:     4,
 		PollingHz:              500,
+		MonitorDuringGameplay:  false,
 		Bindings:               make(map[string]binding),
 	}
 }
@@ -2023,6 +2240,13 @@ func loadConfig(c *config) {
 		if _, ok := rawKeys["input_backend"]; !ok {
 			// Preserve the known-good behavior for existing users. New installs default to Auto.
 			tmp.InputBackend = "WinMM"
+		}
+		// v2.0 beta default: enable the hybrid thrust model once for existing
+		// configurations (v1.99 defaulted to Off). After migration, saved user
+		// choices—INCLUDING an explicit Off—remain authoritative.
+		if _, initialized := rawKeys["preserve_thrust_v2_initialized"]; !initialized {
+			tmp.PreserveThrust = true
+			tmp.PreserveThrustV2 = true
 		}
 		tmp.InputBackend = normalizeInputBackend(tmp.InputBackend)
 		if _, ok := rawKeys["control_mode"]; !ok {
@@ -2111,6 +2335,7 @@ func loadConfig(c *config) {
 		if tmp.ThumbWASDForwardAxis < 0 || tmp.ThumbWASDForwardAxis > 5 {
 			tmp.ThumbWASDForwardAxis = 1
 		}
+		normalizeDrivingWheel(&tmp.DrivingWheel, rawKeys["driving_wheel"] != nil, maxAxis)
 		validateAuxiliaryAxis(&tmp.TwistLeft, rawKeys["twist_left"] != nil, maxAxis)
 		validateAuxiliaryAxis(&tmp.TwistRight, rawKeys["twist_right"] != nil, maxAxis)
 		tmp.PedalMode = normalizePedalMode(tmp.PedalMode)
@@ -2144,6 +2369,12 @@ func loadConfig(c *config) {
 	readPedalMode(raw, "pedal_mode", &d.PedalMode)
 	readDeadzone(raw, "deadzone", &d.Deadzone)
 	readBool(raw, "preserve_thrust", &d.PreserveThrust)
+	if _, initialized := raw["preserve_thrust_v2_initialized"]; !initialized {
+		d.PreserveThrust = true
+		d.PreserveThrustV2 = true
+	} else {
+		readBool(raw, "preserve_thrust_v2_initialized", &d.PreserveThrustV2)
+	}
 	readInt(raw, "pedal_steer_strength", &d.PedalSteerStrength)
 	readInt(raw, "camera_sensitivity", &d.CameraSensitivity)
 	readInt(raw, "camera_deadzone", &d.CameraDeadzone)
@@ -2280,6 +2511,9 @@ func normalizeInputBackend(s string) string {
 
 func normalizeControlMode(s string) string {
 	u := strings.ToUpper(strings.TrimSpace(s))
+	if strings.Contains(u, "WHEEL") {
+		return "WHEEL"
+	}
 	if strings.Contains(u, "HOTAS") {
 		return "HOTAS"
 	}
@@ -2301,6 +2535,12 @@ func normalizeHotasBrakeBehavior(s string) string {
 func normalizePedalMode(s string) string {
 	ls := strings.ToLower(strings.TrimSpace(s))
 	switch {
+	case ls == "boost/drift" || ls == "boost drift":
+		return "Boost/Drift"
+	case ls == "boost":
+		return "Boost"
+	case ls == "drift":
+		return "Drift"
 	case strings.Contains(ls, "keyboard") || strings.Contains(ls, "key"):
 		return "Keyboard keys"
 	case strings.Contains(ls, "pitch") || strings.Contains(ls, "left stick y") || strings.Contains(ls, "ly"):
@@ -2849,6 +3089,10 @@ func (a *appState) pollLoop() {
 	a.cfgMu.RUnlock()
 	ticker := time.NewTicker(currentInterval)
 	defer func() { ticker.Stop() }()
+	// Extra physical-axis reads for the optional gameplay monitor are limited
+	// to 10 Hz; the gameplay input/output polling loop keeps its own rate.
+	var lastGameMonitorRead time.Time
+	var cachedLeftX, cachedRightX float64
 	for {
 		select {
 		case <-a.stopCh:
@@ -2865,12 +3109,19 @@ func (a *appState) pollLoop() {
 			}
 
 			ids := []int{}
-			if strings.EqualFold(normalizeControlMode(c.ControlMode), "HOTAS") {
+			switch normalizeControlMode(c.ControlMode) {
+			case "HOTAS":
 				ids = append(ids, c.HotasThrottleID, c.HotasStickID)
-			} else {
+			case "WHEEL":
+				for _, v := range []wheelAxisConfig{c.DrivingWheel.Wheel, c.DrivingWheel.Pedal1, c.DrivingWheel.Pedal2, c.DrivingWheel.Pedal3, c.DrivingWheel.Handbrake} {
+					if v.DeviceID >= 0 {
+						ids = append(ids, v.DeviceID)
+					}
+				}
+			default:
 				ids = append(ids, c.LeftID, c.RightID)
 			}
-			if c.PedalID >= 0 {
+			if normalizeControlMode(c.ControlMode) != "WHEEL" && c.PedalID >= 0 {
 				ids = append(ids, c.PedalID)
 			}
 			for _, tw := range []auxiliaryAxisConfig{c.TwistLeft, c.TwistRight} {
@@ -2921,7 +3172,8 @@ func (a *appState) pollLoop() {
 			var twistValues [2]float64
 			var twistValid [2]bool
 			twistCfg := [2]auxiliaryAxisConfig{c.TwistLeft, c.TwistRight}
-			isHOTAS := strings.EqualFold(normalizeControlMode(c.ControlMode), "HOTAS")
+			isHOTAS := normalizeControlMode(c.ControlMode) == "HOTAS"
+			isWheel := normalizeControlMode(c.ControlMode) == "WHEEL"
 			backend := normalizeInputBackend(c.InputBackend)
 			if isHOTAS {
 				if raw, ok := a.readConfiguredAxis(backend, c.HotasThrottleDIGUID, c.HotasThrottleID, c.HotasThrottleAxis, c.HotasThrottleInvert, states, okmap); ok {
@@ -2929,35 +3181,37 @@ func (a *appState) pollLoop() {
 					hotasThrottleValid = true
 				}
 				if raw, ok := a.readConfiguredAxis(backend, c.HotasStickDIGUID, c.HotasStickID, c.HotasStickXAxis, c.HotasStickInvertX, states, okmap); ok {
-					hotasX = applyDeadzone(raw, c.Deadzone)
+					hotasX = tunedCentered(raw, profileFromConfig(c, profileHOTASX))
 				}
 				if raw, ok := a.readConfiguredAxis(backend, c.HotasStickDIGUID, c.HotasStickID, c.HotasStickYAxis, c.HotasStickInvertY, states, okmap); ok {
-					hotasY = applyDeadzone(raw, c.Deadzone)
+					hotasY = tunedCentered(raw, profileFromConfig(c, profileHOTASY))
 				}
-			} else {
+			} else if !isWheel {
 				if c.LeftThrottleMode {
 					if raw, ok := a.readConfiguredThrottleCentered(backend, c.LeftDIGUID, c.LeftID, c.LeftAxis, c.LeftInvert, states, okmap); ok {
-						l = applyDeadzone(raw, c.Deadzone)
+						l = tunedCentered(raw, profileFromConfig(c, profileHOSASLeft))
 					}
 				} else if raw, ok := a.readConfiguredAxis(backend, c.LeftDIGUID, c.LeftID, c.LeftAxis, c.LeftInvert, states, okmap); ok {
-					l = applyDeadzone(raw, c.Deadzone)
+					l = tunedCentered(raw, profileFromConfig(c, profileHOSASLeft))
 				}
 				if c.RightThrottleMode {
 					if raw, ok := a.readConfiguredThrottleCentered(backend, c.RightDIGUID, c.RightID, c.RightAxis, c.RightInvert, states, okmap); ok {
-						r = applyDeadzone(raw, c.Deadzone)
+						r = tunedCentered(raw, profileFromConfig(c, profileHOSASRight))
 					}
 				} else if raw, ok := a.readConfiguredAxis(backend, c.RightDIGUID, c.RightID, c.RightAxis, c.RightInvert, states, okmap); ok {
-					r = applyDeadzone(raw, c.Deadzone)
+					r = tunedCentered(raw, profileFromConfig(c, profileHOSASRight))
 				}
 			}
-			if raw, ok := a.readConfiguredAxis(backend, c.PedalDIGUID, c.PedalID, c.PedalAxis, c.PedalInvert, states, okmap); ok {
-				pedalRaw = raw
-				pedalValid = true
-				p = applyDeadzone(pedalRaw, c.Deadzone)
-				cameraX = clamp(
-					applyDeadzone(pedalRaw, c.CameraDeadzone)*float64(c.CameraSensitivity)/100.0,
-					-1, 1,
-				)
+			if !isWheel {
+				if raw, ok := a.readConfiguredAxis(backend, c.PedalDIGUID, c.PedalID, c.PedalAxis, c.PedalInvert, states, okmap); ok {
+					pedalRaw = raw
+					pedalValid = true
+					p = tunedCentered(pedalRaw, profileFromConfig(c, profilePedal))
+					cameraX = clamp(
+						tunedValueAfterDeadzone(applyDeadzone(pedalRaw, c.CameraDeadzone), profileFromConfig(c, profilePedal))*float64(c.CameraSensitivity)/100.0,
+						-1, 1,
+					)
+				}
 			}
 
 			for i, tw := range twistCfg {
@@ -2966,13 +3220,39 @@ func (a *appState) pollLoop() {
 				}
 				if raw, ok := a.readConfiguredAxis(backend, tw.DIGUID, tw.DeviceID, tw.Axis, false, states, okmap); ok {
 					twistRaw[i] = raw
-					twistValues[i] = normalizeAuxiliaryValue(raw, tw, tw.Deadzone)
+					key := profileTwistRight
+					if i == 0 {
+						key = profileTwistLeft
+					}
+					twistValues[i] = tunedCentered(normalizeAuxiliaryValue(raw, tw, 0), profileFromConfig(c, key))
 					twistValid[i] = true
 				}
 			}
 
-			drive := calculateDrive(l, r, c.PreserveThrust)
-			steer := clamp(l-r, -1, 1)
+			wheelSteer, accelPedal, brakePedal, clutchPedal, handbrakePedal := 0.0, 0.0, 0.0, 0.0, 0.0
+			if isWheel {
+				readWheel := func(v wheelAxisConfig, profile string, centered bool) float64 {
+					raw, ok := a.readConfiguredAxis(backend, v.DIGUID, v.DeviceID, v.Axis, v.Invert, states, okmap)
+					if !ok {
+						return 0
+					}
+					if centered {
+						return tunedCentered(raw, profileFromConfig(c, profile))
+					}
+					return tunedOneWay(clamp((raw+1)/2, 0, 1), profileFromConfig(c, profile))
+				}
+				wheelSteer = readWheel(c.DrivingWheel.Wheel, profileWheelSteering, true)
+				accelPedal = readWheel(c.DrivingWheel.Pedal1, profileWheelPedal1, false)
+				brakePedal = readWheel(c.DrivingWheel.Pedal2, profileWheelPedal2, false)
+				clutchPedal = readWheel(c.DrivingWheel.Pedal3, profileWheelPedal3, false)
+				if !c.DrivingWheel.HandbrakeButton {
+					handbrakePedal = readWheel(c.DrivingWheel.Handbrake, profileWheelHandbrake, false)
+				} else if b, ok := c.Bindings["WHEELHANDBRAKE"]; ok && bindingPressed(b, states, okmap, diStates, diOK) {
+					handbrakePedal = 1
+				}
+			}
+			drive := tunedCentered(calculateDrive(l, r, c.PreserveThrust), profileFromConfig(c, profileHOSASThrust))
+			steer := tunedCentered(clamp(l-r, -1, 1), profileFromConfig(c, profileHOSASSteer))
 			hotasBrake := false
 			hotasBrakeAmount := 0.0
 			if isHOTAS {
@@ -3001,15 +3281,23 @@ func (a *appState) pollLoop() {
 				} else {
 					drive = 0
 				}
+				// Shape acceleration only: no change to brake zones/thresholds.
+				if drive > 0 {
+					drive = tunedOneWay(drive, profileFromConfig(c, profileHOTASThrottle))
+				}
 				hotasBrake = hotasBrakeAmount > 0.001
 				steer = hotasX
 			}
-			if strings.EqualFold(c.PedalMode, "Fine steering") {
+			if isWheel {
+				drive = accelPedal
+				steer = wheelSteer
+			}
+			if !isWheel && strings.EqualFold(c.PedalMode, "Fine steering") {
 				steer = clamp(steer+p*float64(c.PedalSteerStrength)/100.0, -1, 1)
 			}
 			pitchValue, pitchAssigned := 0.0, false
 			cameraValue, cameraAssigned := 0.0, false
-			if pedalValid {
+			if pedalValid && !isWheel {
 				if strings.EqualFold(c.PedalMode, "Pitch") {
 					pitchValue += p
 					pitchAssigned = true
@@ -3031,7 +3319,11 @@ func (a *appState) pollLoop() {
 					pitchValue += v
 					pitchAssigned = true
 				case "Move Camera":
-					cameraValue += normalizeAuxiliaryValue(twistRaw[i], tw, tw.CameraDeadzone) * float64(tw.CameraSensitivity) / 100
+					key := profileTwistRight
+					if i == 0 {
+						key = profileTwistLeft
+					}
+					cameraValue += tunedValueAfterDeadzone(normalizeAuxiliaryValue(twistRaw[i], tw, tw.CameraDeadzone), profileFromConfig(c, key)) * float64(tw.CameraSensitivity) / 100
 					cameraAssigned = true
 				}
 			}
@@ -3039,6 +3331,18 @@ func (a *appState) pollLoop() {
 			cameraValue = clamp(cameraValue, -1, 1)
 
 			var buttonMask uint16
+			if isWheel {
+				buttonMask |= axisDigitalButtons(c.DrivingWheel.Pedal3Mode, clutchPedal)
+				buttonMask |= axisDigitalButtons(c.DrivingWheel.HandbrakeMode, handbrakePedal)
+			} else {
+				buttonMask |= axisDigitalButtons(c.PedalMode, p)
+			}
+			for i, tw := range twistCfg {
+				if !twistValid[i] {
+					continue
+				}
+				buttonMask |= axisDigitalButtons(tw.Mode, twistValues[i])
+			}
 			var outputHighlights uint32
 			manualLT, manualRT := false, false
 			manualPitchUp, manualPitchDown := false, false
@@ -3070,7 +3374,7 @@ func (a *appState) pollLoop() {
 					keyboardWanted[bo.VK] = keyboardWanted[bo.VK] || (pressed && a.mappingActive.Load())
 				}
 			}
-			if strings.EqualFold(c.PedalMode, "Keyboard keys") && a.mappingActive.Load() && (c.PedalID >= 0 || c.PedalDIGUID != "") {
+			if !isWheel && strings.EqualFold(c.PedalMode, "Keyboard keys") && a.mappingActive.Load() && (c.PedalID >= 0 || c.PedalDIGUID != "") {
 				threshold := clamp(float64(c.PedalKeyThreshold)/100.0, 0.05, 0.95)
 				if pedalRaw <= -threshold {
 					keyboardWanted[uint16(c.PedalLeftKey)] = true
@@ -3148,22 +3452,33 @@ func (a *appState) pollLoop() {
 			}
 			a.applyKeyboardOutputs(keyboardWanted)
 
-			// Live monitor visuals intentionally do not do the extra axis work while
-			// game mapping is active. The controller path remains at the selected polling rate.
+			// HOSAS side-axis reads are unnecessary when monitoring is paused.
+			// During gameplay, when opted in, sample them at most every 100 ms.
 			leftX, leftY, rightX, rightY := 0.0, l, 0.0, r
 			active := a.mappingActive.Load()
-			if isHOTAS {
-				leftX, leftY = hotasX, hotasY
-				rightX, rightY = 0, 0
-			} else if !active {
-				hax := monitorHorizontalAxis(c.LeftAxis)
-				if raw, ok := a.readConfiguredAxis(backend, c.LeftDIGUID, c.LeftID, hax, false, states, okmap); ok {
-					leftX = applyDeadzone(raw, c.Deadzone)
+			if isWheel {
+				// A single signed vertical pedal value: above center is throttle,
+				// below center is brake. Separate physical pedals remain independent.
+				leftX, leftY = 0, accelPedal-brakePedal
+				rightX, rightY = wheelSteer, 0
+			} else if isHOTAS {
+				leftX, leftY = 0, hotasThrottle-hotasBrakeAmount
+				rightX, rightY = hotasX, hotasY
+			} else if !active || c.MonitorDuringGameplay {
+				readSideAxes := !active || time.Since(lastGameMonitorRead) >= 100*time.Millisecond
+				if readSideAxes {
+					cachedLeftX, cachedRightX = 0, 0
+					hax := monitorHorizontalAxis(c.LeftAxis)
+					if raw, ok := a.readConfiguredAxis(backend, c.LeftDIGUID, c.LeftID, hax, false, states, okmap); ok {
+						cachedLeftX = tunedCentered(raw, profileFromConfig(c, profileHOSASLeft))
+					}
+					hax = monitorHorizontalAxis(c.RightAxis)
+					if raw, ok := a.readConfiguredAxis(backend, c.RightDIGUID, c.RightID, hax, false, states, okmap); ok {
+						cachedRightX = tunedCentered(raw, profileFromConfig(c, profileHOSASRight))
+					}
+					lastGameMonitorRead = time.Now()
 				}
-				hax = monitorHorizontalAxis(c.RightAxis)
-				if raw, ok := a.readConfiguredAxis(backend, c.RightDIGUID, c.RightID, hax, false, states, okmap); ok {
-					rightX = applyDeadzone(raw, c.Deadzone)
-				}
+				leftX, rightX = cachedLeftX, cachedRightX
 			}
 
 			a.monitorMu.Lock()
@@ -3203,7 +3518,10 @@ func (a *appState) pollLoop() {
 				a.cameraTestMu.RUnlock()
 
 				if active {
-					if isHOTAS {
+					if isWheel {
+						rep.RightTrigger, rep.LeftTrigger = drivingPedals(accelPedal, brakePedal)
+						rep.ThumbLX = floatToStick(wheelSteer)
+					} else if isHOTAS {
 						if drive >= 0 {
 							rep.RightTrigger = byte(math.Round(clamp(drive, 0, 1) * 255))
 						} else {
@@ -3402,9 +3720,9 @@ func (a *appState) startMappingAsync() {
 	a.xboxSlot.Store(int32(slot))
 	a.mappingStarting.Store(false)
 	if slot >= 0 {
-		a.postStatus(fmt.Sprintf("Mapping ACTIVE. Virtual Xbox created in Windows XInput slot %d.", slot+1))
+		a.postStatus(a.mappingStatus())
 	} else {
-		a.postStatus("Mapping ACTIVE. Virtual Xbox created; XInput slot verification is inconclusive.")
+		a.postStatus(a.mappingStatus())
 	}
 	procPostMessageW.Call(a.hwnd, WM_APP_XBOX, 0, 0)
 }
@@ -3646,19 +3964,37 @@ func wndProc(hwnd uintptr, message uint32, wParam, lParam uintptr) uintptr {
 	case WM_COMMAND:
 		app.onCommand(loword(wParam), hiword(wParam))
 		return 0
-	case WM_LBUTTONDOWN:
-		app.closeComboIfPointerOutside()
-		return 0
+	case WM_CTLCOLORSTATIC:
+		// Win32 STATIC text may otherwise draw opaque *white* rectangles
+		// behind labels, especially after a themed tab switch. Always set
+		// the DC background mode explicitly and return the matching brush
+		// for the relevant pane. This does not recolor real input widgets.
+		procSetBkMode.Call(wParam, TRANSPARENT)
+		if isRightTabTextControl(app, lParam) {
+			face, _, _ := procGetSysColorBrush.Call(COLOR_BTNFACE)
+			color, _, _ := procGetSysColor.Call(COLOR_BTNFACE)
+			procSetBkColor.Call(wParam, color)
+			return face
+		}
+		if mainBackgroundBrush != 0 {
+			procSetBkColor.Call(wParam, mainBackgroundColor)
+			return mainBackgroundBrush
+		}
+	case WM_NOTIFY:
+		// SysTabControl32 is a real themed tab strip, not two push-buttons.
+		// Programmatic selection in selectRightTab does not emit this notification.
+		if lParam != 0 {
+			hdr := (*tabNotifyHeader)(unsafe.Pointer(lParam))
+			if hdr.HwndFrom == app.controls[idRightPanelTabs] && hdr.Code == TCN_SELCHANGE {
+				i, _, _ := procSendMessageW.Call(hdr.HwndFrom, TCM_GETCURSEL, 0, 0)
+				app.selectRightTab(int(i))
+				return 0
+			}
+		}
 	case WM_MOUSEWHEEL:
 		app.closeCombo(false)
 		app.handleMouseWheel(wParam)
 		return 0
-	case WM_PARENTNOTIFY:
-		// Mouse clicks on child controls notify the parent. If a custom selector is
-		// open and the click is outside its list, dismiss it before handling the click.
-		if loword(wParam) == WM_LBUTTONDOWN {
-			app.closeComboIfPointerOutside()
-		}
 	case WM_SIZE:
 		app.closeCombo(false)
 		app.updateScrollbars()
@@ -3672,7 +4008,13 @@ func wndProc(hwnd uintptr, message uint32, wParam, lParam uintptr) uintptr {
 		app.handleScroll(true, wParam)
 		return 0
 	case WM_TIMER:
+		// Curve values affect the poll loop immediately, while file writes are
+		// coalesced so dragging a slider does not hammer the config file.
+		app.flushTuningWhenDue(false)
 		app.refreshMonitor()
+		if app.tuning != nil {
+			app.tuning.refreshLiveInput()
+		}
 		app.refreshDirectInputMonitor()
 		app.refreshHotasDirectInputMonitor()
 		app.updateHoverTooltip()
@@ -3693,7 +4035,13 @@ func wndProc(hwnd uintptr, message uint32, wParam, lParam uintptr) uintptr {
 		procDestroyWindow.Call(hwnd)
 		return 0
 	case WM_DESTROY:
+		app.flushTuningWhenDue(true)
 		procKillTimer.Call(hwnd, 1)
+		for _, font := range []uintptr{app.headerFont, app.actionFont, app.testFont} {
+			if font != 0 {
+				procDeleteObject.Call(font)
+			}
+		}
 		app.stopOnce.Do(func() { close(app.stopCh) })
 		procPostQuitMessage.Call(0)
 		return 0
@@ -3715,6 +4063,20 @@ func (a *appState) createControl(class, text string, style uintptr, x, y, w, h, 
 	}
 	return ctrl
 }
+
+// Opt-in emphasis for the header and selected action buttons. All normal labels,
+// mapping rows and hover-help text retain the exact v2.0.4 default font.
+func createEmphasisFont(pixelHeight, weight int) uintptr {
+	height := uint32(int32(-pixelHeight))
+	font, _, _ := procCreateFontW.Call(uintptr(height), 0, 0, 0, uintptr(weight), 0, 0, 0,
+		1, 0, 0, 4, 0, uintptr(unsafe.Pointer(utf16ptr("Segoe UI"))))
+	return font
+}
+func applyEmphasisFont(h, f uintptr) {
+	if h != 0 && f != 0 {
+		procSendMessageW.Call(h, WM_SETFONT, f, 1)
+	}
+}
 func (a *appState) createLabel(text string, x, y, w, h int) uintptr {
 	return a.createControl("STATIC", text, WS_CHILD|WS_VISIBLE|SS_LEFT, x, y, w, h, 0)
 }
@@ -3724,10 +4086,12 @@ func (a *appState) createButton(text string, x, y, w, h, id int) uintptr {
 func (a *appState) createCheck(text string, x, y, w, h, id int) uintptr {
 	return a.createControl("BUTTON", text, WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_AUTOCHECKBOX, x, y, w, h, id)
 }
+
+// All main-window selectors use native CBS_DROPDOWNLIST controls. The old
+// capture-friendly child LISTBOX could sit behind embedded tuning panes or
+// obscure controls; the OS owns the popup Z-order, focus, and keyboard behavior.
+// The application's option/index/GUID maps retain exactly their old identities.
 func (a *appState) createCombo(x, y, w, h, id int) uintptr {
-	// Capture-friendly picker: the closed selector is a normal child button and the
-	// option list is also a child of this window. Unlike a native COMBOBOX dropdown,
-	// it remains visible in window-only screen sharing/capture.
 	if a.comboOptions == nil {
 		a.comboOptions = make(map[int][]string)
 	}
@@ -3736,197 +4100,49 @@ func (a *appState) createCombo(x, y, w, h, id int) uintptr {
 	}
 	a.comboOptions[id] = nil
 	a.comboSelected[id] = 0
-	return a.createButton("Select...  v", x, y, w, 26, id)
+	popupHeight := h
+	if popupHeight < 180 {
+		popupHeight = 180
+	}
+	ctrl := a.createControl("COMBOBOX", "", WS_CHILD|WS_VISIBLE|WS_TABSTOP|WS_VSCROLL|CBS_DROPDOWNLIST, x, y, w, popupHeight, id)
+	// COMBOBOX CreateWindow height includes the open dropdown; virtual scroll
+	// dimensions should use only the collapsed selector (not its floating list).
+	if ctrl != 0 {
+		a.baseRects[ctrl] = rect{Left: int32(x), Top: int32(y), Right: int32(x + w), Bottom: int32(y + 26)}
+	}
+	return ctrl
 }
 func (a *appState) isComboID(id int) bool {
 	_, ok := a.comboOptions[id]
 	return ok
 }
-
 func (a *appState) comboReset(id int) {
+	if h := a.controls[id]; h != 0 {
+		procSendMessageW.Call(h, CB_RESETCONTENT, 0, 0)
+	}
 	a.comboOptions[id] = nil
 	a.comboSelected[id] = 0
-	if h := a.controls[id]; h != 0 {
-		setText(h, "Select...  v")
-	}
 }
-
 func (a *appState) comboAdd(id int, text string) {
 	a.comboOptions[id] = append(a.comboOptions[id], text)
+	if h := a.controls[id]; h != 0 {
+		procSendMessageW.Call(h, CB_ADDSTRING, 0, uintptr(unsafe.Pointer(utf16ptr(text))))
+		if len(a.comboOptions[id]) == 1 {
+			procSendMessageW.Call(h, CB_SETCURSEL, 0, 0)
+		}
+	}
 	if len(a.comboOptions[id]) == 1 {
 		a.comboSelected[id] = 0
-		setText(a.controls[id], text+"  v")
 	}
 }
 
-func (a *appState) ensureComboList() uintptr {
-	if a.comboList != 0 {
-		return a.comboList
-	}
-	list, _, _ := procCreateWindowExW.Call(
-		0,
-		uintptr(unsafe.Pointer(utf16ptr("LISTBOX"))),
-		0,
-		WS_CHILD|WS_TABSTOP|WS_BORDER|WS_VSCROLL|LBS_NOTIFY,
-		0, 0, 100, 100,
-		a.hwnd, uintptr(idComboList), 0, 0,
-	)
-	a.comboList = list
-	if list != 0 && a.font != 0 {
-		procSendMessageW.Call(list, WM_SETFONT, a.font, 1)
-	}
-	return list
-}
-
-func (a *appState) toggleCombo(id int) {
-	if !a.isComboID(id) {
-		return
-	}
-	if a.comboActiveID == id && a.comboList != 0 {
-		a.closeCombo(false)
-		return
-	}
-	a.closeCombo(false)
-	list := a.ensureComboList()
-	if list == 0 {
-		return
-	}
-	procSendMessageW.Call(list, LB_RESETCONTENT, 0, 0)
-	opts := a.comboOptions[id]
-	for _, opt := range opts {
-		procSendMessageW.Call(list, LB_ADDSTRING, 0, uintptr(unsafe.Pointer(utf16ptr(opt))))
-	}
-	idx := a.comboSelected[id]
-	if idx < 0 || idx >= len(opts) {
-		idx = 0
-	}
-	if len(opts) > 0 {
-		procSendMessageW.Call(list, LB_SETCURSEL, uintptr(idx), 0)
-	}
-
-	button := a.controls[id]
-	var br rect
-	if ok, _, _ := procGetWindowRect.Call(button, uintptr(unsafe.Pointer(&br))); ok == 0 {
-		return
-	}
-	top := point{X: br.Left, Y: br.Top}
-	bottom := point{X: br.Left, Y: br.Bottom}
-	procScreenToClient.Call(a.hwnd, uintptr(unsafe.Pointer(&top)))
-	procScreenToClient.Call(a.hwnd, uintptr(unsafe.Pointer(&bottom)))
-	width := int(br.Right - br.Left)
-	height := len(opts)*22 + 6
-	if height < 56 {
-		height = 56
-	}
-	if height > 220 {
-		height = 220
-	}
-	var client rect
-	procGetClientRect.Call(a.hwnd, uintptr(unsafe.Pointer(&client)))
-	y := int(bottom.Y)
-	if y+height > int(client.Bottom) && int(top.Y)-height >= 0 {
-		y = int(top.Y) - height
-	}
-	// The selector is intentionally an in-window child so window-only capture can see it.
-	// Native sibling controls can otherwise paint over an overlapping child listbox on
-	// some Windows configurations. Position it at the top of the child Z-order, hide
-	// only the visible siblings underneath its rectangle, then bring it to the top again.
-	procSetWindowPos.Call(list, 0, uintptr(int(top.X)), uintptr(y), uintptr(width), uintptr(height), SWP_SHOWWINDOW)
-	a.hideControlsBehindCombo(list, button)
-	procBringWindowToTop.Call(list)
-	procSetFocus.Call(list)
-	a.comboActiveID = id
-}
-
-func rectsOverlap(a, b rect) bool {
-	return a.Left < b.Right && a.Right > b.Left && a.Top < b.Bottom && a.Bottom > b.Top
-}
-
-func (a *appState) restoreComboHiddenControls() {
-	for _, h := range a.comboHidden {
-		if h != 0 {
-			procShowWindow.Call(h, SW_SHOW)
+// Called when scrolling/changing tabs. Close native popup lists without
+// changing any selection or dispatching synthetic selection notifications.
+func (a *appState) closeCombo(_ bool) {
+	for id := range a.comboOptions {
+		if h := a.controls[id]; h != 0 {
+			procSendMessageW.Call(h, CB_SHOWDROPDOWN, 0, 0)
 		}
-	}
-	a.comboHidden = a.comboHidden[:0]
-}
-
-func (a *appState) hideControlsBehindCombo(list, comboButton uintptr) {
-	a.restoreComboHiddenControls()
-	if list == 0 {
-		return
-	}
-	var listRect rect
-	if ok, _, _ := procGetWindowRect.Call(list, uintptr(unsafe.Pointer(&listRect))); ok == 0 {
-		return
-	}
-	// baseRects tracks every child control created by createControl, including
-	// labels that do not have command IDs and therefore are not in a.controls.
-	for h := range a.baseRects {
-		if h == 0 || h == list || h == comboButton {
-			continue
-		}
-		if vis, _, _ := procIsWindowVisible.Call(h); vis == 0 {
-			continue
-		}
-		var rc rect
-		if ok, _, _ := procGetWindowRect.Call(h, uintptr(unsafe.Pointer(&rc))); ok == 0 {
-			continue
-		}
-		if rectsOverlap(listRect, rc) {
-			procShowWindow.Call(h, SW_HIDE)
-			a.comboHidden = append(a.comboHidden, h)
-		}
-	}
-	procBringWindowToTop.Call(list)
-}
-
-func (a *appState) closeComboIfPointerOutside() {
-	if a.comboList == 0 || a.comboActiveID == 0 {
-		return
-	}
-	var pt point
-	if ok, _, _ := procGetCursorPos.Call(uintptr(unsafe.Pointer(&pt))); ok == 0 {
-		return
-	}
-	var rc rect
-	if ok, _, _ := procGetWindowRect.Call(a.comboList, uintptr(unsafe.Pointer(&rc))); ok == 0 {
-		return
-	}
-	if pt.X >= rc.Left && pt.X < rc.Right && pt.Y >= rc.Top && pt.Y < rc.Bottom {
-		return
-	}
-	// Let a click on the selector button itself reach toggleCombo so it behaves
-	// like a normal dropdown button (clicking it again closes the open list).
-	if button := a.controls[a.comboActiveID]; button != 0 {
-		var br rect
-		if ok, _, _ := procGetWindowRect.Call(button, uintptr(unsafe.Pointer(&br))); ok != 0 {
-			if pt.X >= br.Left && pt.X < br.Right && pt.Y >= br.Top && pt.Y < br.Bottom {
-				return
-			}
-		}
-	}
-	a.closeCombo(false)
-}
-
-func (a *appState) closeCombo(apply bool) {
-	if a.comboList == 0 || a.comboActiveID == 0 {
-		return
-	}
-	id := a.comboActiveID
-	if apply {
-		r, _, _ := procSendMessageW.Call(a.comboList, LB_GETCURSEL, 0, 0)
-		idx := int(int32(r))
-		if idx >= 0 && idx < len(a.comboOptions[id]) {
-			a.comboSelected[id] = idx
-			setText(a.controls[id], a.comboOptions[id][idx]+"  v")
-		}
-	}
-	procShowWindow.Call(a.comboList, SW_HIDE)
-	a.restoreComboHiddenControls()
-	a.comboActiveID = 0
-	if apply {
-		a.onCommand(id, CBN_SELCHANGE)
 	}
 }
 
@@ -3997,6 +4213,23 @@ func (a *appState) updateHoverTooltip() {
 		setText(a.controls[idHelpText], "Help: "+help)
 		a.tooltipHover = hovered
 	}
+}
+
+// Keep the original v2.0.4 control positions, including the help strip and
+// footer. Calculate scrollbar bounds from actual UI child positions instead
+// of the stale 1680x1110 virtual canvas that showed phantom scrollbars.
+func (a *appState) fitContentBounds() {
+	maxRight, maxBottom := 0, 0
+	for _, r := range a.baseRects {
+		if int(r.Right) > maxRight {
+			maxRight = int(r.Right)
+		}
+		if int(r.Bottom) > maxBottom {
+			maxBottom = int(r.Bottom)
+		}
+	}
+	a.contentWidth = maxRight + 20
+	a.contentHeight = maxBottom + 20
 }
 
 func (a *appState) updateScrollbars() {
@@ -4174,23 +4407,10 @@ func hidhidePaths() (cli, client string, installed bool) {
 	return cli, client, cli != "" && client != ""
 }
 
-func (a *appState) refreshHidHideUI() {
-	h := a.controls[idHidHideStatus]
-	if h == 0 {
-		return
-	}
-	_, _, ok := hidhidePaths()
-	if ok {
-		setText(h, "HidHide: installed (optional)")
-	} else {
-		setText(h, "HidHide: not installed (optional)")
-	}
-}
-
 func (a *appState) openHidHideSetup() {
 	cli, client, ok := hidhidePaths()
 	if !ok {
-		a.postStatus("HidHide is not installed. Opening the official HidHide releases page. It is optional and used to prevent double input.")
+		a.postStatus("HidHide tools were not found in the default Program Files location. If you installed to a custom drive, open HidHide there manually. Opening the official releases page.")
 		procShellExecuteW.Call(0, uintptr(unsafe.Pointer(utf16ptr("open"))), uintptr(unsafe.Pointer(utf16ptr("https://github.com/nefarius/HidHide/releases"))), 0, 0, SW_SHOW)
 		return
 	}
@@ -4232,58 +4452,153 @@ func (a *appState) setGroupVisible(group []uintptr, visible bool) {
 	}
 }
 
+// configuredInputDevice checks the selected device identity rather than just the
+// combo index: a DirectInput GUID or a WinMM ID is required ("None" is invalid).
+func (a *appState) configuredInputDevice(id int) bool {
+	a.cfgMu.RLock()
+	backend := normalizeInputBackend(a.cfg.InputBackend)
+	a.cfgMu.RUnlock()
+	return inputDeviceSelected(backend, comboDevice(id), comboGUID(id))
+}
+
+func (a *appState) updateMappedThumbstickLabel() {
+	if a.controls[idMappedThumbstick] == 0 {
+		return
+	}
+	a.cfgMu.RLock()
+	c := a.cfg
+	a.cfgMu.RUnlock()
+	if c.ThumbDISideGUID == "" || c.ThumbDIForwardGUID == "" {
+		setText(a.controls[idMappedThumbstick], "Mapped Thumbstick: Not assigned — use Detect Thumbstick")
+		return
+	}
+	deviceName := strings.TrimSpace(c.ThumbDIDeviceName)
+	if deviceName == "" {
+		deviceName = "Saved DirectInput device"
+	}
+	side, forward := fmt.Sprintf("Axis %d", c.ThumbDISideAxis), fmt.Sprintf("Axis %d", c.ThumbDIForwardAxis)
+	if c.ThumbDISideAxis >= 0 && c.ThumbDISideAxis < len(diAxisNames) {
+		side = diAxisNames[c.ThumbDISideAxis]
+	}
+	if c.ThumbDIForwardAxis >= 0 && c.ThumbDIForwardAxis < len(diAxisNames) {
+		forward = diAxisNames[c.ThumbDIForwardAxis]
+	}
+	setText(a.controls[idMappedThumbstick], fmt.Sprintf("Mapped Thumbstick: %s  |  Horizontal: %s  |  Forward: %s", deviceName, side, forward))
+}
 func (a *appState) updateContextVisibility() {
 	if !a.uiReady {
 		return
 	}
-	controlModes := []string{"HOSAS", "HOTAS"}
+	controlModes := []string{"HOSAS", "HOTAS", "WHEEL"}
 	ci := comboIndex(idControlMode)
 	if ci < 0 || ci >= len(controlModes) {
 		ci = 0
 	}
 	cm := controlModes[ci]
-	a.setGroupVisible(a.controlHOSASGroup, strings.EqualFold(cm, "HOSAS"))
+	isHOSAS := strings.EqualFold(cm, "HOSAS")
+	a.setGroupVisible(a.controlHOSASGroup, isHOSAS)
 	isHOTAS := strings.EqualFold(cm, "HOTAS")
 	a.setGroupVisible(a.controlHOTASGroup, isHOTAS)
-	a.setGroupVisible(a.hosasDrivingGroup, strings.EqualFold(cm, "HOSAS"))
+	isWheel := cm == "WHEEL"
+	a.setGroupVisible(a.controlWheelGroup, isWheel)
+	for i, row := range []int{idWheelDevice, idWheelPedal1Device, idWheelPedal2Device, idWheelPedal3Device} {
+		a.setGroupVisible(a.drivingWheelDetails[i], isWheel && a.configuredInputDevice(row))
+	}
+	if a.drivingShifted != isWheel {
+		shift := int32(45)
+		if !isWheel {
+			shift = -45
+		}
+		for _, h := range a.drivingShiftHandles {
+			r, ok := a.baseRects[h]
+			if ok {
+				r.Top += shift
+				r.Bottom += shift
+				a.baseRects[h] = r
+			}
+		}
+		a.drivingShifted = isWheel
+		a.repositionScrolledChildren()
+	}
+	if isWheel {
+		setText(a.handbrakeTitle, "Hand Brake")
+	} else {
+		setText(a.handbrakeTitle, "Rudder Pedals")
+	}
+	// This shared row is called Hand Brake in Wheel mode. The old
+	// "Pedal device" label is exclusive to the Rudder Pedals modes; keep
+	// the device selector, analog axis and saved assignments intact.
+	a.setGroupVisible([]uintptr{a.pedalDeviceLabel}, !isWheel)
+	a.setGroupVisible(a.handbrakeButtonGroup, isWheel)
+	a.setGroupVisible(a.hosasDrivingGroup, isHOSAS && a.activeRightTab == 1)
+	// Only the device selectors (and Detect buttons) remain visible when
+	// a hardware input is not selected. Hidden controls keep their values.
+	leftConfigured := a.configuredInputDevice(idLeftDevice)
+	rightConfigured := a.configuredInputDevice(idRightDevice)
+	throttleConfigured := a.configuredInputDevice(idHotasThrottleDevice)
+	stickConfigured := a.configuredInputDevice(idHotasStickDevice)
+	pedalConfigured := a.configuredInputDevice(idPedalDevice)
+	twistLeftConfigured := a.configuredInputDevice(idTwistLeftDevice)
+	twistRightConfigured := a.configuredInputDevice(idTwistRightDevice)
+	a.setGroupVisible(a.hosasLeftDetailGroup, isHOSAS && leftConfigured)
+	a.setGroupVisible(a.hosasRightDetailGroup, isHOSAS && rightConfigured)
+	a.setGroupVisible(a.hotasThrottleDetailGroup, isHOTAS && throttleConfigured)
+	a.setGroupVisible(a.hotasStickDetailGroup, isHOTAS && stickConfigured)
+	// Digital handbrakes do not need an analog device; Mode must still be selectable.
+	a.setGroupVisible(a.pedalDetailGroup, pedalConfigured || (isWheel && isChecked(a.controls[idWheelHandbrakeButton])))
+	a.setGroupVisible(a.twistLeftDetailGroup, twistLeftConfigured)
+	a.setGroupVisible(a.twistRightDetailGroup, twistRightConfigured)
 	brakeModes := []string{"Off", "Digital at Idle", "Analog Brake Zone"}
 	bi := comboIndex(idHotasBrakeBehavior)
 	if bi < 0 || bi >= len(brakeModes) {
 		bi = 1
 	}
 	bm := brakeModes[bi]
-	a.setGroupVisible(a.hotasBrakeDigitalGroup, isHOTAS && bm == "Digital at Idle")
-	a.setGroupVisible(a.hotasBrakeAnalogGroup, isHOTAS && bm == "Analog Brake Zone")
-	pedalModes := []string{"Off", "Fine steering", "Move Camera", "Pitch", "Keyboard keys"}
+	a.setGroupVisible(a.hotasBrakeDigitalGroup, isHOTAS && throttleConfigured && bm == "Digital at Idle")
+	a.setGroupVisible(a.hotasBrakeAnalogGroup, isHOTAS && throttleConfigured && bm == "Analog Brake Zone")
+	pedalModes := a.comboOptions[idPedalMode]
 	pi := comboIndex(idPedalMode)
 	if pi < 0 || pi >= len(pedalModes) {
 		pi = 0
 	}
 	pm := pedalModes[pi]
-	a.setGroupVisible(a.pedalFineGroup, strings.EqualFold(pm, "Fine steering"))
-	a.setGroupVisible(a.pedalCameraGroup, strings.EqualFold(pm, "Move Camera"))
-	a.setGroupVisible(a.pedalKeyGroup, strings.EqualFold(pm, "Keyboard keys"))
+	a.setGroupVisible(a.pedalFineGroup, !isWheel && pedalConfigured && strings.EqualFold(pm, "Fine steering"))
+	a.setGroupVisible(a.pedalCameraGroup, !isWheel && pedalConfigured && strings.EqualFold(pm, "Move Camera"))
+	a.setGroupVisible(a.pedalKeyGroup, !isWheel && pedalConfigured && strings.EqualFold(pm, "Keyboard keys"))
+	cameraModes := []string{}
+	if pedalConfigured {
+		cameraModes = append(cameraModes, pm)
+	}
 	for _, row := range []struct {
 		modeID             int
+		configured         bool
 		fine, camera, keys []uintptr
 	}{
-		{idTwistLeftMode, a.twistLeftFineGroup, a.twistLeftCameraGroup, a.twistLeftKeyGroup},
-		{idTwistRightMode, a.twistRightFineGroup, a.twistRightCameraGroup, a.twistRightKeyGroup},
+		{idTwistLeftMode, twistLeftConfigured, a.twistLeftFineGroup, a.twistLeftCameraGroup, a.twistLeftKeyGroup},
+		{idTwistRightMode, twistRightConfigured, a.twistRightFineGroup, a.twistRightCameraGroup, a.twistRightKeyGroup},
 	} {
-		mi := comboIndex(row.modeID)
-		if mi < 0 || mi >= len(pedalModes) {
-			mi = 0
+		mode := a.selectedComboText(row.modeID)
+		a.setGroupVisible(row.fine, row.configured && mode == "Fine steering")
+		a.setGroupVisible(row.camera, row.configured && mode == "Move Camera")
+		if row.configured {
+			cameraModes = append(cameraModes, mode)
 		}
-		a.setGroupVisible(row.fine, strings.EqualFold(pedalModes[mi], "Fine steering"))
-		a.setGroupVisible(row.camera, strings.EqualFold(pedalModes[mi], "Move Camera"))
-		a.setGroupVisible(row.keys, strings.EqualFold(pedalModes[mi], "Keyboard keys"))
+		a.setGroupVisible(row.keys, row.configured && mode == "Keyboard keys")
 	}
+	// Diagnostic buttons require an active virtual controller. Selecting
+	// Move Camera alone must not expose buttons that cannot send output.
+	controllerActive := a.mappingActive.Load() && a.xboxReady.Load()
+	a.setGroupVisible(a.cameraTestGroup, cameraTestControlsVisible(controllerActive, cameraModes...))
+	a.setGroupVisible([]uintptr{a.controls[idTestA]}, controllerActive)
 	// Negative polarity is a lever-only option. Invert continues to reverse travel.
-	for _, twist := range []struct{ axisTypeID, negativeID int }{
-		{idTwistLeftAxisType, idTwistLeftOutputNegative},
-		{idTwistRightAxisType, idTwistRightOutputNegative},
+	for _, twist := range []struct {
+		axisTypeID, negativeID int
+		configured             bool
+	}{
+		{idTwistLeftAxisType, idTwistLeftOutputNegative, twistLeftConfigured},
+		{idTwistRightAxisType, idTwistRightOutputNegative, twistRightConfigured},
 	} {
-		a.setGroupVisible([]uintptr{a.controls[twist.negativeID]}, comboIndex(twist.axisTypeID) == 1)
+		a.setGroupVisible([]uintptr{a.controls[twist.negativeID]}, twist.configured && comboIndex(twist.axisTypeID) == 1)
 	}
 
 	onFootModes := []string{"Off", "Thumbstick -> WASD", "Buttons -> WASD"}
@@ -4293,25 +4608,133 @@ func (a *appState) updateContextVisibility() {
 	}
 	om := onFootModes[oi]
 	a.setGroupVisible(a.onFootThumbGroup, strings.EqualFold(om, "Thumbstick -> WASD"))
+	a.updateMappedThumbstickLabel()
+	if a.tuning != nil {
+		a.tuning.refreshEntriesFromConfig()
+	}
+	if isWheel || isHOTAS {
+		setText(a.monitorLeftHeading, "Throttle / Brake")
+		setText(a.monitorLeftForwardAxis, "T")
+		setText(a.monitorLeftBackwardAxis, "Br")
+		if isWheel {
+			procShowWindow.Call(a.monitorRightForwardAxis, SW_HIDE)
+			procShowWindow.Call(a.monitorRightBackwardAxis, SW_HIDE)
+		} else {
+			procShowWindow.Call(a.monitorRightForwardAxis, SW_SHOW)
+			procShowWindow.Call(a.monitorRightBackwardAxis, SW_SHOW)
+		}
+		if isWheel {
+			setText(a.monitorRightHeading, "Wheel")
+		} else {
+			setText(a.monitorRightHeading, "Stick")
+		}
+	} else {
+		setText(a.monitorLeftHeading, "Left Input")
+		setText(a.monitorRightHeading, "Right Input")
+		setText(a.monitorLeftForwardAxis, "F")
+		setText(a.monitorLeftBackwardAxis, "B")
+		procShowWindow.Call(a.monitorRightForwardAxis, SW_SHOW)
+		procShowWindow.Call(a.monitorRightBackwardAxis, SW_SHOW)
+	}
 	a.setGroupVisible(a.onFootButtonGroup, strings.EqualFold(om, "Buttons -> WASD"))
+}
+
+// selectRightTab toggles panel controls without resetting the active tab on mode changes.
+func (a *appState) selectRightTab(tab int) {
+	if tab != 1 {
+		tab = 0
+	}
+	a.closeCombo(false)
+	if a.activeRightTab == 1 && tab != 1 {
+		a.flushTuningWhenDue(true)
+	}
+	a.activeRightTab = tab
+	if nativeTabs := a.controls[idRightPanelTabs]; nativeTabs != 0 {
+		procSendMessageW.Call(nativeTabs, TCM_SETCURSEL, uintptr(tab), 0)
+	}
+	a.setGroupVisible(a.mappingTabGroup, tab == 0)
+	for _, h := range a.calibrationTabGroup {
+		if h != a.controls[idPreserve] {
+			procShowWindow.Call(h, map[bool]uintptr{true: SW_SHOW, false: SW_HIDE}[tab == 1])
+		}
+	}
+	if a.tuning != nil && a.tuning.hwnd != 0 {
+		if tab == 1 {
+			procShowWindow.Call(a.tuning.hwnd, SW_SHOW)
+		} else {
+			procShowWindow.Call(a.tuning.hwnd, SW_HIDE)
+		}
+	}
+	if a.uiReady {
+		a.updateContextVisibility()
+	}
+}
+
+func (a *appState) flushTuningWhenDue(force bool) {
+	if !a.tuningDirty || (!force && time.Now().Before(a.tuningSaveDue)) {
+		return
+	}
+	a.tuningDirty = false
+	saveConfig()
+}
+
+func (a *appState) createDrivingWheelUI() {
+	// The third optional pedal stays above the Additional Analogue Inputs area.
+	// The existing HOSAS/HOTAS layout and footer remain unchanged in those modes.
+	rows := []struct {
+		name                         string
+		y                            int
+		device, axis, invert, detect int
+	}{
+		{"Wheel", 72, idWheelDevice, idWheelAxis, idWheelInvert, idWheelDetect},
+		{"Pedal 1 (Throttle)", 105, idWheelPedal1Device, idWheelPedal1Axis, idWheelPedal1Invert, idWheelPedal1Detect},
+		{"Pedal 2 (Brake)", 138, idWheelPedal2Device, idWheelPedal2Axis, idWheelPedal2Invert, idWheelPedal2Detect},
+		{"Pedal 3 (Clutch)", 171, idWheelPedal3Device, idWheelPedal3Axis, idWheelPedal3Invert, idWheelPedal3Detect},
+	}
+	a.controlWheelGroup = append(a.controlWheelGroup,
+		a.createLabel("Input Devices", 20, 48, 160, 20),
+		a.createLabel("Device", 155, 48, 240, 20),
+		a.createLabel("Axis", 405, 48, 85, 20))
+	for i, row := range rows {
+		a.controlWheelGroup = append(a.controlWheelGroup,
+			a.createLabel(row.name, 20, row.y+4, 129, 23),
+			a.createCombo(150, row.y, 240, 260, row.device))
+		detail := []uintptr{
+			a.createCombo(405, row.y, 85, 220, row.axis),
+			a.createCheck("Invert", 500, row.y+1, 75, 24, row.invert),
+		}
+		detect := a.createButton("Detect", 582, row.y-1, 96, 28, row.detect)
+		a.drivingWheelDetails[i] = detail
+		a.controlWheelGroup = append(a.controlWheelGroup, detail...)
+		a.controlWheelGroup = append(a.controlWheelGroup, detect)
+	}
+	// Pedal 1/2 are fixed to acceleration/brake; only the optional third pedal is remappable.
+	a.controlWheelGroup = append(a.controlWheelGroup,
+		a.createLabel("Mode", 698, 175, 50, 22), a.createCombo(748, 171, 160, 170, idWheelPedal3Mode))
+	// The Rudder Pedals row is reused as Hand Brake in this control mode.
+	// Shifted row occupies y=433 after updateContextVisibility applies its 45px offset.
+	a.handbrakeButtonGroup = append(a.handbrakeButtonGroup,
+		a.createButton("Detect", 839, 433, 70, 27, idWheelHandbrakeDetect),
+		a.createCheck("Button", 911, 433, 79, 25, idWheelHandbrakeButton),
+		a.createButton("Learn Btn", 994, 433, 111, 27, idWheelHandbrakeLearn))
 }
 
 func (a *appState) createTwistUI(left bool, y, detailY int) {
 	ids := auxiliaryIDs(left)
-	name := "Right Twist Axis"
+	name := "Additional Input 2"
 	if left {
-		name = "Left Twist Axis"
+		name = "Additional Input 1"
 	}
-	a.createLabel(name, 20, y+4, 125, 23)
+	a.createLabel(name, 20, y+4, 130, 23)
 	a.createCombo(150, y, 232, 250, ids[0])
-	a.createCombo(392, y, 83, 210, ids[1])
-	a.createCheck("Invert", 483, y+1, 75, 24, ids[2])
-	a.createLabel("Type", 555, y+4, 38, 22)
-	a.createCombo(594, y, 103, 120, ids[3])
-	a.createLabel("DZ%", 703, y+4, 38, 22)
-	a.createEdit("6", 741, y, 41, 25, ids[4])
-	a.createLabel("Mode", 793, y+4, 43, 22)
-	a.createCombo(840, y, 267, 160, ids[5])
+	detail := []uintptr{
+		a.createCombo(392, y, 83, 210, ids[1]),
+		a.createCheck("Invert", 483, y+1, 75, 24, ids[2]),
+		a.createLabel("Type", 555, y+4, 38, 22),
+		a.createCombo(594, y, 103, 120, ids[3]),
+		a.createLabel("Mode", 709, y+4, 43, 22),
+		a.createCombo(755, y, 352, 160, ids[5]),
+	}
 	// Separate from Invert; placed on the detail row without overlapping mode options.
 	// Only visible for Lever axis type (see updateContextVisibility).
 	a.createCheck("Output Negative", 915, detailY+1, 176, 24, ids[12])
@@ -4335,8 +4758,10 @@ func (a *appState) createTwistUI(left bool, y, detailY int) {
 		a.createLabel("Threshold %", 692, detailY+4, 98, 24),
 		a.createEdit("20", 792, detailY, 54, 25, ids[11]))
 	if left {
+		a.twistLeftDetailGroup = detail
 		a.twistLeftFineGroup, a.twistLeftCameraGroup, a.twistLeftKeyGroup = fine, camera, keys
 	} else {
+		a.twistRightDetailGroup = detail
 		a.twistRightFineGroup, a.twistRightCameraGroup, a.twistRightKeyGroup = fine, camera, keys
 	}
 }
@@ -4344,39 +4769,46 @@ func (a *appState) createTwistUI(left bool, y, detailY int) {
 func (a *appState) createUI() {
 	f, _, _ := procGetStockObject.Call(DEFAULT_GUI_FONT)
 	a.font = f
+	a.headerFont = createEmphasisFont(16, 700)
+	a.actionFont = createEmphasisFont(16, 700)
+	a.testFont = createEmphasisFont(16, 400)
 
-	a.createLabel("Flight controls -> Xbox 360 bridge for Galactic Racer", 20, 15, 650, 24)
-	a.createLabel("by JaffaQuake and Mars", 820, 15, 260, 24)
+	// One single-line heading keeps attribution near the title. We do not
+	// change default fonts for any section headings or the help/tooltip bar.
+	applyEmphasisFont(a.createLabel("Flight controls -> Xbox Controls Mapping Bridge for Galactic Racer     Designed by JaffaQuake (Andy N.)", 20, 12, 1090, 30), a.headerFont)
 	a.createLabel("Control mode", 830, 50, 95, 22)
 	a.createCombo(925, 44, 185, 160, idControlMode)
-	a.createLabel("Input API", 830, 80, 90, 22)
-	a.createCombo(925, 74, 185, 140, idInputBackend)
-	a.createButton("Refresh devices", 830, 104, 120, 28, idRefresh)
-	a.createButton("HidHide Setup", 960, 104, 150, 28, idHidHideSetup)
-	a.createControl("STATIC", "HidHide: checking...", WS_CHILD|WS_VISIBLE|SS_LEFT, 830, 134, 280, 18, idHidHideStatus)
+	a.createLabel("Input API", 830, 88, 90, 22)
+	a.createCombo(925, 80, 185, 140, idInputBackend)
+	a.createButton("Refresh devices", 830, 113, 120, 28, idRefresh)
+	a.createButton("HidHide Setup", 960, 113, 150, 28, idHidHideSetup)
 
 	// Podracer Style controls. Hidden automatically when Traditional HOTAS is selected.
 	a.controlHOSASGroup = append(a.controlHOSASGroup,
-		a.createLabel("HOSAS sticks", 20, 48, 160, 20),
+		a.createLabel("Input Devices", 20, 48, 160, 20),
 		a.createLabel("Device", 155, 48, 240, 20),
 		a.createLabel("Forward axis", 405, 48, 110, 20),
-		a.createLabel("Left stick", 20, 76, 120, 24),
+		a.createLabel("Left Input", 20, 76, 120, 24),
 		a.createCombo(150, 72, 240, 260, idLeftDevice),
 		a.createCombo(405, 72, 85, 220, idLeftAxis),
 		a.createCheck("Invert", 500, 73, 75, 24, idLeftInvert),
 		a.createCheck("Throttle axis", 580, 73, 115, 24, idLeftThrottleMode),
-		a.createButton("Detect Left", 705, 70, 110, 28, idDetectLeft),
-		a.createLabel("Right stick", 20, 110, 120, 24),
+		a.createButton("Detect Left", 697, 70, 106, 28, idDetectLeft),
+		a.createLabel("Right Input", 20, 110, 120, 24),
 		a.createCombo(150, 106, 240, 260, idRightDevice),
 		a.createCombo(405, 106, 85, 220, idRightAxis),
 		a.createCheck("Invert", 500, 107, 75, 24, idRightInvert),
 		a.createCheck("Throttle axis", 580, 107, 115, 24, idRightThrottleMode),
-		a.createButton("Detect Right", 705, 104, 110, 28, idDetectRight))
+		a.createButton("Detect Right", 697, 104, 106, 28, idDetectRight))
 
+	a.hosasLeftDetailGroup = []uintptr{a.controls[idLeftAxis], a.controls[idLeftInvert], a.controls[idLeftThrottleMode]}
+	a.hosasRightDetailGroup = []uintptr{a.controls[idRightAxis], a.controls[idRightInvert], a.controls[idRightThrottleMode]}
+
+	brakeLabel := a.createLabel("Brake behavior", 580, 48, 105, 20)
 	// Traditional HOTAS controls occupy the same space as the Podracer rows. Throttle behavior is configurable;
 	// the selected flight stick maps directly to the virtual Xbox left thumbstick.
 	a.controlHOTASGroup = append(a.controlHOTASGroup,
-		a.createLabel("HOTAS", 20, 48, 100, 20),
+		a.createLabel("Input Devices", 20, 48, 160, 20),
 		a.createLabel("Device", 155, 48, 220, 20),
 		a.createLabel("Throttle / X axis", 405, 48, 100, 20),
 		a.createLabel("Y axis", 500, 48, 70, 20),
@@ -4384,14 +4816,19 @@ func (a *appState) createUI() {
 		a.createCombo(150, 72, 240, 260, idHotasThrottleDevice),
 		a.createCombo(405, 72, 85, 220, idHotasThrottleAxis),
 		a.createCheck("Invert", 500, 73, 75, 24, idHotasThrottleInvert),
-		a.createLabel("Brake behavior", 580, 48, 105, 20),
+		brakeLabel,
 		a.createCombo(580, 72, 150, 160, idHotasBrakeBehavior),
-		a.createLabel("Flight stick", 20, 110, 120, 24),
+		a.createLabel("Stick", 20, 110, 120, 24),
 		a.createCombo(150, 106, 240, 260, idHotasStickDevice),
 		a.createCombo(405, 106, 85, 220, idHotasStickXAxis),
 		a.createCombo(500, 106, 85, 220, idHotasStickYAxis),
 		a.createCheck("Invert X", 590, 107, 78, 24, idHotasStickInvertX),
 		a.createCheck("Invert Y", 670, 107, 78, 24, idHotasStickInvertY))
+
+	a.hotasThrottleDetailGroup = []uintptr{a.controls[idHotasThrottleAxis], a.controls[idHotasThrottleInvert], a.controls[idHotasBrakeBehavior], brakeLabel}
+	a.hotasStickDetailGroup = []uintptr{a.controls[idHotasStickXAxis], a.controls[idHotasStickYAxis], a.controls[idHotasStickInvertX], a.controls[idHotasStickInvertY]}
+	// Brake behavior header is contextual to the throttle; the other axis
+	// headers remain static to describe the columns when any input is chosen.
 
 	a.hotasBrakeDigitalGroup = append(a.hotasBrakeDigitalGroup,
 		a.createLabel("Idle %", 735, 76, 48, 22),
@@ -4405,14 +4842,19 @@ func (a *appState) createUI() {
 	for _, h := range a.hotasBrakeAnalogGroup {
 		a.controlHOTASGroup = append(a.controlHOTASGroup, h)
 	}
-	a.createLabel("Rudder pedals", 20, 154, 130, 20)
-	a.createLabel("Pedal device", 20, 182, 115, 24)
+	a.handbrakeTitle = a.createLabel("Rudder Pedals", 20, 154, 130, 20)
+	a.pedalDeviceLabel = a.createLabel("Pedal device", 20, 182, 115, 24)
 	a.createCombo(150, 178, 240, 260, idPedalDevice)
 	a.createCombo(405, 178, 85, 220, idPedalAxis)
 	a.createCheck("Invert", 500, 179, 75, 24, idPedalInvert)
-	a.createLabel("Pedal use", 585, 182, 80, 20)
+	pedalUseLabel := a.createLabel("Mode", 585, 182, 80, 20)
 	a.createCombo(665, 178, 170, 180, idPedalMode)
 
+	a.pedalDetailGroup = []uintptr{a.controls[idPedalAxis], a.controls[idPedalInvert], a.controls[idPedalMode], pedalUseLabel}
+	a.handbrakeShiftHandles = append(a.handbrakeShiftHandles, a.handbrakeTitle, a.pedalDeviceLabel, a.controls[idPedalDevice])
+	a.handbrakeShiftHandles = append(a.handbrakeShiftHandles, a.pedalDetailGroup...)
+	// Label "Pedal use" is also conditional on hardware selection; it must
+	// hide together with the mode selector, not remain floating in the row.
 	// Pedal-specific settings share one row and are shown only for the selected pedal mode.
 	a.pedalFineGroup = append(a.pedalFineGroup,
 		a.createLabel("Fine-steer authority", 20, 216, 130, 24),
@@ -4434,8 +4876,14 @@ func (a *appState) createUI() {
 		a.createEdit("20", 650, 212, 55, 25, idPedalKeyThreshold),
 		a.createLabel("%", 710, 216, 25, 22))
 
+	// Camera test buttons are directly beneath Rudder Pedals and appear only if
+	// either twist axis or Rudder Pedals uses Move Camera.
+	a.cameraTestGroup = append(a.cameraTestGroup,
+		a.createButton("Camera Left", 845, 212, 122, 29, idTestCamLeft),
+		a.createButton("Camera Right", 975, 212, 128, 29, idTestCamRight))
+
 	// On-foot controls can use either an analog thumbstick (DirectInput) or learned buttons/hats.
-	a.createLabel("On-foot controls", 20, 264, 120, 22)
+	a.createLabel("On-Foot Controls", 20, 264, 140, 22)
 	a.createLabel("Mode", 145, 264, 45, 22)
 	a.createCombo(190, 258, 190, 180, idOnFootMode)
 
@@ -4449,6 +4897,8 @@ func (a *appState) createUI() {
 		a.createButton("Detect Thumbstick", 765, 256, 145, 30, idDetectWASD))
 	diMon := a.createControl("STATIC", "DirectInput axis monitor: waiting for game-controller data...", WS_CHILD|WS_VISIBLE|SS_LEFT, 20, 300, 1100, 52, idDIThumbMonitor)
 	a.onFootThumbGroup = append(a.onFootThumbGroup, diMon)
+	mappedLabel := a.createControl("STATIC", "Mapped Thumbstick: Not assigned", WS_CHILD|WS_VISIBLE|SS_LEFT, 20, 355, 1090, 24, idMappedThumbstick)
+	a.onFootThumbGroup = append(a.onFootThumbGroup, mappedLabel)
 
 	// Buttons -> WASD contextual controls. Each direction learns a controller button/hat/switch.
 	for i, def := range wasdButtonDefs {
@@ -4460,90 +4910,43 @@ func (a *appState) createUI() {
 		a.onFootButtonGroup = append(a.onFootButtonGroup, indicator, label, learn, clear)
 	}
 
-	a.createLabel("Driving", 20, 392, 100, 20)
-	a.createLabel("Deadzone", 20, 420, 80, 22)
-	a.createEdit("6", 100, 416, 50, 25, idDeadzone)
-	a.createLabel("%", 155, 420, 25, 22)
-	a.hosasDrivingGroup = append(a.hosasDrivingGroup,
-		a.createCheck("Hybrid preserve thrust", 200, 416, 190, 26, idPreserve),
-		a.createLabel("Forward steering keeps thrust; pulling one stick behind center progressively scrubs it.", 400, 420, 555, 30))
-
-	a.createButton("Initiate Xbox Controller", 20, 460, 180, 32, idStart)
-	a.createButton("Test Xbox A", 210, 460, 105, 32, idTestA)
-	a.createButton("Camera Left", 325, 460, 105, 32, idTestCamLeft)
-	a.createButton("Camera Right", 440, 460, 110, 32, idTestCamRight)
-	a.createButton("Save settings", 560, 460, 115, 32, idSave)
-	a.createLabel("Polling rate", 700, 467, 85, 22)
-	a.createCombo(785, 460, 105, 180, idPollingRate)
-	a.createLabel("Hz", 895, 467, 30, 22)
-
-	a.createLabel("LIVE INPUT MONITOR", 20, 508, 170, 20)
+	a.createLabel("Live Input Monitor", 20, 508, 185, 20)
+	a.createCheck("Monitor during gameplay", 325, 505, 240, 27, idMonitorDuringGameplay)
 	a.createControl("STATIC", "Waiting for devices...", WS_CHILD|WS_VISIBLE|SS_LEFT, 20, 533, 545, 56, idMonitor)
-	a.createControl("STATIC", "Virtual Xbox disconnected. Click Initiate Xbox Controller to create it.", WS_CHILD|WS_VISIBLE|SS_LEFT, 20, 593, 545, 45, idStatus)
+	a.createControl("STATIC", "Virtual Xbox disconnected. Click Initiate Xbox Controller to create it.", WS_CHILD|WS_VISIBLE|SS_LEFT, 20, 593, 555, 45, idStatus)
 	a.createControl("STATIC", "XInput readback: disconnected", WS_CHILD|WS_VISIBLE|SS_LEFT, 20, 643, 545, 28, idXInputReadback)
-	hotasDI := a.createControl("STATIC", "HOTAS DirectInput live: waiting for selected devices...", WS_CHILD|WS_VISIBLE|SS_LEFT, 20, 675, 1090, 42, idHotasDIAxisMonitor)
+	hotasDI := a.createControl("STATIC", "HOTAS DirectInput live: waiting for selected devices...", WS_CHILD|WS_VISIBLE|SS_LEFT, 20, 745, 1085, 55, idHotasDIAxisMonitor)
 	a.controlHOTASGroup = append(a.controlHOTASGroup, hotasDI)
-	a.createControl("STATIC", "Help: hover over a control to see what it does.", WS_CHILD|WS_VISIBLE|WS_BORDER|SS_LEFT, 20, 730, 1090, 32, idHelpText)
 
 	const boxSize = 126
 	leftBoxX, boxY := 600, 542
 	rightBoxX := 770
 	outputBoxX := 940
-	a.createLabel("LEFT STICK", leftBoxX+25, 506, 95, 20)
-	a.createLabel("RIGHT STICK", rightBoxX+18, 506, 105, 20)
-	a.createLabel("DRIVE / STEER", outputBoxX+9, 506, 120, 20)
+	a.monitorLeftHeading = a.createLabel("Left Input", leftBoxX+2, 506, 144, 20)
+	a.monitorRightHeading = a.createLabel("Right Input", rightBoxX+2, 506, 144, 20)
+	a.createLabel("Drive / Steer", outputBoxX+9, 506, 120, 20)
 	for _, x := range []int{leftBoxX, rightBoxX, outputBoxX} {
 		a.createControl("STATIC", "", WS_CHILD|WS_VISIBLE|WS_BORDER, x, boxY, boxSize, boxSize, 0)
 		a.createControl("STATIC", "", WS_CHILD|WS_VISIBLE|WS_BORDER, x+boxSize/2, boxY, 1, boxSize, 0)
 		a.createControl("STATIC", "", WS_CHILD|WS_VISIBLE|WS_BORDER, x, boxY+boxSize/2, boxSize, 1, 0)
-		a.createLabel("F", x+boxSize/2-4, boxY-18, 15, 18)
-		a.createLabel("B", x+boxSize/2-4, boxY+boxSize+2, 15, 18)
+		forward := a.createLabel("F", x+boxSize/2-12, boxY-18, 28, 18)
+		backward := a.createLabel("B", x+boxSize/2-12, boxY+boxSize+2, 28, 18)
+		if x == leftBoxX {
+			a.monitorLeftForwardAxis, a.monitorLeftBackwardAxis = forward, backward
+		} else if x == rightBoxX {
+			a.monitorRightForwardAxis, a.monitorRightBackwardAxis = forward, backward
+		}
 		a.createLabel("L", x-14, boxY+boxSize/2-8, 14, 18)
 		a.createLabel("R", x+boxSize+3, boxY+boxSize/2-8, 14, 18)
 	}
-	a.createControl("BUTTON", "", WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON, leftBoxX+boxSize/2-6, boxY+boxSize/2-6, 12, 12, idLeftDot)
-	a.createControl("BUTTON", "", WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON, rightBoxX+boxSize/2-6, boxY+boxSize/2-6, 12, 12, idRightDot)
-	a.createControl("BUTTON", "", WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON, outputBoxX+boxSize/2-6, boxY+boxSize/2-6, 12, 12, idDriveSteerDot)
-	a.createControl("STATIC", "Side +0.00  F +0.00", WS_CHILD|WS_VISIBLE|SS_LEFT, leftBoxX, boxY+boxSize+22, 155, 20, idLeftVectorText)
-	a.createControl("STATIC", "Side +0.00  F +0.00", WS_CHILD|WS_VISIBLE|SS_LEFT, rightBoxX, boxY+boxSize+22, 155, 20, idRightVectorText)
+	// Colored, truly circular plot markers: red input 1, blue input 2,
+	// green combined output. The 12px bounds and motion remain unchanged.
+	a.createLiveMonitorDot(leftBoxX+boxSize/2-6, boxY+boxSize/2-6, idLeftDot)
+	a.createLiveMonitorDot(rightBoxX+boxSize/2-6, boxY+boxSize/2-6, idRightDot)
+	a.createLiveMonitorDot(outputBoxX+boxSize/2-6, boxY+boxSize/2-6, idDriveSteerDot)
+	a.createControl("STATIC", "Side +0.00  F +0.00", WS_CHILD|WS_VISIBLE|SS_LEFT, leftBoxX, boxY+boxSize+22, 155, 42, idLeftVectorText)
+	a.createControl("STATIC", "Side +0.00  F +0.00", WS_CHILD|WS_VISIBLE|SS_LEFT, rightBoxX, boxY+boxSize+22, 155, 42, idRightVectorText)
 	a.createControl("STATIC", "Drive +0.00 Neutral\r\nSteer +0.00 Straight", WS_CHILD|WS_VISIBLE|SS_LEFT, outputBoxX-5, boxY+boxSize+20, 185, 38, idDriveSteerVectorText)
-
-	// v1.98.1: preserve two mapping columns, but show full physical assignments.
-	// v1.98 had a 148x22 label and 37px rows, causing VKB names to wrap
-	// into clipped second lines. Each row now reserves two text lines and
-	// extra horizontal label width; Galactic Racer labels may wrap as well.
-	const bindingRowHeight = 54
-	const bindingTop = 800
-	const secondBindingColumnX = 588 // 50px of separation between column groups.
-	a.createLabel("STANDARD XBOX MAPPINGS", 20, 770, 800, 22)
-	standardCount := len(buttonOutputs) - 5
-	drawBinding := func(i, x, y int) {
-		bo := buttonOutputs[i]
-		a.createControl("BUTTON", bo.Label, WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON|BS_MULTILINE, x, y, 145, 44, idLearnBase+200+i)
-		a.createControl("STATIC", "Not assigned", WS_CHILD|WS_VISIBLE|SS_LEFT, x+154, y+3, 230, 44, idLearnBase+100+i)
-		a.createButton("Learn", x+394, y+7, 60, 30, idLearnBase+i)
-		a.createButton("Clear", x+463, y+7, 55, 30, idLearnClearBase+i)
-	}
-	for i := 0; i < standardCount; i++ {
-		col := i / 8
-		row := i % 8
-		x := 20
-		if col > 0 {
-			x = secondBindingColumnX
-		}
-		drawBinding(i, x, bindingTop+row*bindingRowHeight)
-	}
-	specificHeadingY := bindingTop + 8*bindingRowHeight + 17
-	a.createLabel("GALACTIC RACER SPECIFIC MAPPINGS", 20, specificHeadingY, 800, 23)
-	for i := standardCount; i < len(buttonOutputs); i++ {
-		n := i - standardCount
-		x := 20
-		if n/3 > 0 {
-			x = secondBindingColumnX
-		}
-		y := specificHeadingY + 32 + (n%3)*bindingRowHeight
-		drawBinding(i, x, y)
-	}
 
 	// Keep the existing downstream 210px layout shift and use the newly
 	// available space to place Twist Axis between the HOSAS/HOTAS rows and
@@ -4551,23 +4954,144 @@ func (a *appState) createUI() {
 	// balancing the space above and below without moving existing controls.
 	// The layout engine uses baseRects to handle scrolling and window resizing.
 	for h, r := range a.baseRects {
-		if r.Top < 154 {
+		originalTop := r.Top
+		if originalTop < 154 {
 			continue
 		}
-		r.Top += 210
-		r.Bottom += 210
+		// Use the vertical space reclaimed from left-panel Calibration.
+		// Reserve y=855..910 for verbose HOTAS diagnostics BELOW all three plots.
+		// Keep on-foot children/learn buttons together without reordering HWNDs.
+		offset := 210
+		if originalTop >= 250 && originalTop < 380 { // On-foot group and saved thumbstick label
+			offset = 205
+		} else if originalTop >= 500 && originalTop < 725 { // Live graphs and monitor diagnostics
+			offset = 100
+		} else if originalTop >= 725 && originalTop < 800 { // HOTAS axis diagnostics go BELOW the plots
+			offset = 110
+		}
+		r.Top += int32(offset)
+		r.Bottom += int32(offset)
 		a.baseRects[h] = r
 		procSetWindowPos.Call(h, 0, uintptr(r.Left), uintptr(r.Top), 0, 0, SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE)
 	}
+	// Help is kept at the bottom of the virtual layout, BELOW the HOTAS
+	// diagnostics at y=855..910 and above the footer at y=1027. Create it
+	// after the vertical-reflow loop so it cannot inherit an offset.
+	// Custom-painted help card: white face, 1px border, inset text and a
+	// restrained two-pixel grey shadow. Its content still updates with SetText.
+	// It remains below the HOTAS diagnostics and above the footer controls.
+	a.createHelpPanel(20, 940, 1090, 64)
+
 	// Centered/Lever ranges are already explained by the Axis Type tooltip.
-	a.createLabel("TWIST AXIS", 20, 178, 180, 22)
+	beforeExtra := make(map[uintptr]bool, len(a.baseRects))
+	for h := range a.baseRects {
+		beforeExtra[h] = true
+	}
+	a.createLabel("Additional Analogue Inputs", 20, 178, 220, 22)
 	a.createTwistUI(true, 207, 244)
 	a.createTwistUI(false, 285, 322)
+	for h := range a.baseRects {
+		if !beforeExtra[h] {
+			a.drivingShiftHandles = append(a.drivingShiftHandles, h)
+		}
+	}
+	a.drivingShiftHandles = append(a.drivingShiftHandles, a.handbrakeShiftHandles...)
+	a.createDrivingWheelUI()
+
+	// Right-side mappings panel: adjacent to input configuration and live monitor,
+	// not under them. 43px rows retain a two-line physical-button assignment.
+	// The new sidebar bounds keep total content height near the main controls.
+	const bindingX = 1145
+	const bindingRowHeight = 41
+	const bindingTop = 84
+	// A real, OS-themed tab control supplies raised selected and recessed
+	// inactive tabs with a continuous shared page border. It belongs to the
+	// common window, not either page's hide/show group. Keep it underneath
+	// the page content (created next) in sibling Z-order.
+	panelTabs := a.createControl("SysTabControl32", "", WS_CHILD|WS_VISIBLE|WS_TABSTOP,
+		bindingX-13, 12, 640, 976, idRightPanelTabs)
+	for i, name := range []string{"Mappings", "Input Curves/Axis Tuning"} {
+		label := utf16ptr(name)
+		item := tabControlItem{Mask: TCIF_TEXT, Text: label}
+		procSendMessageW.Call(panelTabs, TCM_INSERTITEMW, uintptr(i), uintptr(unsafe.Pointer(&item)))
+	}
+	procSendMessageW.Call(panelTabs, TCM_SETCURSEL, 0, 0)
+
+	// Native tab-frame border replaces the old free-standing vertical divider.
+	// Respect TCM_ADJUSTRECT so the embedded calibration child cannot paint
+	// over the right edge of the tab (as it did at 655px in v2.0.9).
+	tabArea := rect{Left: 0, Top: 0, Right: 640, Bottom: 976}
+	procSendMessageW.Call(panelTabs, TCM_ADJUSTRECT, 0, uintptr(unsafe.Pointer(&tabArea)))
+	panelRight := bindingX - 13 + int(tabArea.Right)
+	usableRight := panelRight - 12 // conservative themed-client inset
+	axisWidth := usableRight - bindingX
+	if axisWidth > 610 {
+		axisWidth = 610
+	}
+	// Even on a theme with unusual padding, never give the embedded child
+	// more width than the tab frame can contain.
+	// The existing selector is 594px. A normal 640px tab supplies over
+	// 610px inside its display rectangle; do not expand beyond measured
+	// bounds if a different native theme reports less space.
+	if axisWidth < 0 {
+		axisWidth = 0
+	}
+	standardCount := len(buttonOutputs) - 5
+	specificHeadingY := bindingTop + standardCount*bindingRowHeight + 12
+
+	mappingBefore := make(map[uintptr]bool, len(a.baseRects))
+	for h := range a.baseRects {
+		mappingBefore[h] = true
+	}
+	a.createLabel("Standard Xbox Mappings", bindingX, 54, 455, 24)
+	drawBinding := func(i, y int) {
+		bo := buttonOutputs[i]
+		a.createControl("BUTTON", bo.Label, WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON|BS_MULTILINE, bindingX, y, 145, 37, idLearnBase+200+i)
+		a.createControl("STATIC", "Not assigned", WS_CHILD|WS_VISIBLE|SS_LEFT, bindingX+153, y+2, 305, 37, idLearnBase+100+i)
+		a.createButton("Learn", bindingX+465, y+3, 62, 30, idLearnBase+i)
+		a.createButton("Clear", bindingX+535, y+3, 62, 30, idLearnClearBase+i)
+	}
+	for i := 0; i < standardCount; i++ {
+		drawBinding(i, bindingTop+i*bindingRowHeight)
+	}
+	a.createLabel("Galactic Racer Specific Mappings", bindingX, specificHeadingY, 455, 24)
+	for i := standardCount; i < len(buttonOutputs); i++ {
+		drawBinding(i, specificHeadingY+28+(i-standardCount)*bindingRowHeight)
+	}
+
+	for h := range a.baseRects {
+		if !mappingBefore[h] {
+			a.mappingTabGroup = append(a.mappingTabGroup, h)
+		}
+	}
+	// Calibration tab: selector and Podracer-only Hybrid are no longer in the left panel.
+	a.calibrationTabGroup = append(a.calibrationTabGroup,
+		a.createLabel("Calibration", bindingX, 64, 240, 24),
+		a.createLabel("Polling rate", bindingX, 105, 92, 22),
+		a.createCombo(bindingX+100, 99, 136, 155, idPollingRate),
+		a.createLabel("Hz", bindingX+244, 105, 28, 22))
+	a.hosasDrivingGroup = append(a.hosasDrivingGroup,
+		a.createCheck("Hybrid preserve thrust", bindingX+292, 99, 240, 27, idPreserve))
+	a.calibrationTabGroup = append(a.calibrationTabGroup, a.controls[idPreserve])
+	a.createEmbeddedAxisTuning(bindingX, 152, axisWidth, 807)
+	// Start on Mappings regardless of the saved control mode.
+	a.selectRightTab(0)
+
+	// Right-align the three action buttons against the usable tab content edge.
+	// Preserve each width, inter-button spacing, and the help/footer clearance.
+	footerShift := axisWidth - (408 + 153)
+	if footerShift < 0 {
+		footerShift = 0
+	}
+	applyEmphasisFont(a.createButton("Links to new updates/socials", 20, 1027, 260, 34, idSocialLinks), a.actionFont)
+	applyEmphasisFont(a.createButton("Test Xbox A", bindingX+footerShift, 1027, 110, 34, idTestA), a.testFont)
+	applyEmphasisFont(a.createButton("Initiate Xbox Controller", bindingX+footerShift+118, 1027, 280, 34, idStart), a.actionFont)
+	applyEmphasisFont(a.createButton("Save settings", bindingX+footerShift+408, 1027, 153, 34, idSave), a.actionFont)
 
 	// Hover help.
-	a.tooltipForID(idControlMode, "Podracer Style uses two flight controls as a differential pair: both contribute to thrust and their difference controls steering. Traditional HOTAS uses a dedicated throttle for acceleration/braking behavior and a flight stick for conventional Xbox left-stick steering.")
+	a.tooltipForID(idControlMode, "Driving Wheel provides centered steering and independent accelerator, brake, optional third pedal and handbrake sources. Podracer Style uses two flight controls as a differential pair: both contribute to thrust and their difference controls steering. Traditional HOTAS uses a dedicated throttle for acceleration/braking behavior and a flight stick for conventional Xbox left-stick steering.")
 	a.tooltipForID(idInputBackend, "Axis input backend. Auto uses DirectInput first and falls back to WinMM when possible. DirectInput exposes X/Y/Z, Rx/Ry/Rz and Slider 1/2. WinMM keeps the legacy six-axis path and is isolated in a helper process so problematic legacy joystick drivers cannot take down the main app. Learned buttons/hats use the selected Input API. Existing WinMM bindings remain WinMM; DirectInput bindings are stored separately by device GUID.")
-	a.tooltipForID(idHidHideSetup, "Optional double-input protection. If HidHide is installed, this registers this mapper on HidHide's allowlist and opens the official configuration client so you can hide the physical controllers from games. v1.96 does not automatically choose devices to hide.")
+	a.tooltipForID(idHidHideSetup, "Optional double-input protection. Locates HidHide tools under your default Program Files directory, adds this mapper to its allowlist, and opens its configuration client. Custom installations on other drives might need to be opened and configured manually.")
 	a.tooltipForID(idHotasThrottleDevice, "HOTAS throttle device. Its selected axis is converted to Xbox Right Trigger from 0% to 100% forward thrust only.")
 	a.tooltipForID(idHotasThrottleAxis, "Physical throttle axis. Full aft maps to RT 0%; full forward maps to RT 100%. Use Invert if the direction is backwards.")
 	a.tooltipForID(idHotasBrakeBehavior, "Choose Traditional HOTAS throttle braking: Off, Digital at Idle, or Analog Brake Zone. Digital applies full LT at the idle threshold. Analog reserves the bottom throttle zone for proportional LT braking and rescales the remaining travel to full RT acceleration.")
@@ -4588,13 +5112,16 @@ func (a *appState) createUI() {
 	a.tooltipForID(idTestCamLeft, "Force virtual Xbox Right Stick X fully left briefly. Useful for camera-output diagnostics.")
 	a.tooltipForID(idTestCamRight, "Force virtual Xbox Right Stick X fully right briefly. Useful for camera-output diagnostics.")
 	a.tooltipForID(idSave, "Save the current device, axis, deadzone, polling-rate, twist, pedal, on-foot, and learned-button settings.")
-	a.tooltipForID(idPreserve, "Hybrid thrust: forward-stick steering keeps full thrust; pulling one stick behind center progressively scrubs thrust.")
-	a.tooltipForID(idPollingRate, "How often the controller loop requests fresh input/output updates. Higher rates reduce interval but use more CPU; hardware/Windows update rates may still be lower.")
+	a.tooltipForID(idRightPanelTabs, "Mappings is the default tab. Input Curves/Axis Tuning adjusts axes and polling rate; calibration edits are applied immediately.")
+	a.tooltipForID(idPreserve, "ON (default): when both inputs are forward, thrust follows the stronger input, preserving acceleration while steering. Pulling one input behind center progressively reduces thrust. Both inputs backward retain reverse/braking. OFF: thrust is the average of Left Input and Right Input, so turning by moving one stick less forward also reduces acceleration (e.g. Left 100%, Right 0% produces only 50% thrust).")
+	a.tooltipForID(idPollingRate, "Native Windows dropdown: all five 100/200/250/500/1000 Hz choices are available. Controller loop polling frequency. Changes save to polling_hz in your existing settings file and are restored after installing an update. Higher rates may use more CPU; hardware/Windows update rates can still be lower.")
+	a.tooltipForID(idSocialLinks, "Open https://linktr.ee/jaffaquake in your default web browser to find new updates and socials.")
+	a.tooltipForID(idMonitorDuringGameplay, "OFF (default): suspend live input graphs and mapped-button highlights while the virtual Xbox controller is active. ON: continue showing the mode-specific input graphs, Drive/Steer and learned button presses during gameplay. Visuals update at 10 Hz regardless of controller polling rate. May cause a slight increase in CPU usage.")
 	for _, left := range []bool{true, false} {
 		ids := auxiliaryIDs(left)
-		name := "Right Twist Axis"
+		name := "Additional Input 2"
 		if left {
-			name = "Left Twist Axis"
+			name = "Additional Input 1"
 		}
 		a.tooltipForID(ids[0], name+": choose a physical joystick/twist/lever device, or None to disable it.")
 		a.tooltipForID(ids[1], "Select the physical analog axis (X/Y/Z/Rx/Ry/Rz/Slider) for this twist input.")
@@ -4606,7 +5133,7 @@ func (a *appState) createUI() {
 		a.tooltipForID(ids[10], "Keyboard key held when this twist input moves positive past threshold.")
 		a.tooltipForID(ids[12], "Lever mode only: output 0 to -100% instead of 0 to +100%. Invert still independently reverses lever travel. Does not change Centered behavior.")
 	}
-	a.tooltipForID(idPedalMode, "Choose how the rudder axis is used. Pitch maps the pedal axis continuously to Xbox Left Stick Y; positive pedal input is Pitch Up and Pedal Invert reverses the direction. Only settings relevant to the selected mode are shown.")
+	a.tooltipForID(idPedalMode, "In Driving Wheel mode, Hand Brake Mode selects Boost (Xbox A) or Drift (Xbox X). In the other modes, choose how the rudder axis is used. Pitch maps the pedal axis continuously to Xbox Left Stick Y; positive pedal input is Pitch Up and Pedal Invert reverses the direction. Only settings relevant to the selected mode are shown.")
 	a.tooltipForID(idPedalLeftKey, "Keyboard key held when the pedal axis moves left past the configured threshold. Includes Shift, left/right Control, Alt, Tab and other common keys.")
 	a.tooltipForID(idPedalRightKey, "Keyboard key held when the pedal axis moves right past the configured threshold. Includes Shift, left/right Control, Alt, Tab and other common keys.")
 	for i, bo := range buttonOutputs {
@@ -4639,9 +5166,29 @@ func (a *appState) createUI() {
 		a.tooltipForID(idWASDIndicatorBase+i, "Live indicator for the learned "+def.Label+" movement input.")
 	}
 
+	for _, row := range []struct {
+		device, axis, invert, detect int
+		label                        string
+	}{
+		{idWheelDevice, idWheelAxis, idWheelInvert, idWheelDetect, "Wheel"},
+		{idWheelPedal1Device, idWheelPedal1Axis, idWheelPedal1Invert, idWheelPedal1Detect, "Pedal 1 throttle"},
+		{idWheelPedal2Device, idWheelPedal2Axis, idWheelPedal2Invert, idWheelPedal2Detect, "Pedal 2 brake"},
+		{idWheelPedal3Device, idWheelPedal3Axis, idWheelPedal3Invert, idWheelPedal3Detect, "Optional Pedal 3"},
+	} {
+		a.tooltipForID(row.device, row.label+": select a physical USB wheel/pedal device (or None).")
+		a.tooltipForID(row.axis, row.label+": choose X/Y/Z/Rx/Ry/Rz/Slider axis.")
+		a.tooltipForID(row.invert, row.label+": reverse physical travel/direction.")
+		a.tooltipForID(row.detect, row.label+": move this wheel or pedal strongly to automatically detect device, axis and direction.")
+	}
+	a.tooltipForID(idWheelPedal3Mode, "Optional Pedal 3: Off, Boost (Xbox A), or Drift (Xbox X). Signals past the calibration deadzone send a full button press.")
+	a.tooltipForID(idWheelHandbrakeButton, "Use a learned digital handbrake button instead of the analog Hand Brake axis. Pressed equals 100%.")
+	a.tooltipForID(idWheelHandbrakeDetect, "Detect Hand Brake analog axis: pull the handbrake once. Use Button Input instead for a digital switch.")
+	a.tooltipForID(idWheelHandbrakeLearn, "Learn a digital button/switch from a wheel or separate USB handbrake. Use Button Input enables it.")
+	a.tooltipForID(idMappedThumbstick, "Persistent saved DirectInput thumbstick assignment; unlike the live monitor, does not follow most-active hardware.")
 	a.populateCombos()
 	a.applyConfigToUI()
 	a.updateBindingLabels()
+	a.fitContentBounds()
 	a.uiReady = true
 	a.updateContextVisibility()
 	procSetTimer.Call(a.hwnd, 1, 100, 0)
@@ -4652,7 +5199,7 @@ func (a *appState) populateCombos() {
 	backend := normalizeInputBackend(a.cfg.InputBackend)
 	a.cfgMu.RUnlock()
 
-	deviceIDs := []int{idLeftDevice, idRightDevice, idPedalDevice, idHotasThrottleDevice, idHotasStickDevice, idTwistLeftDevice, idTwistRightDevice}
+	deviceIDs := []int{idLeftDevice, idRightDevice, idPedalDevice, idHotasThrottleDevice, idHotasStickDevice, idTwistLeftDevice, idTwistRightDevice, idWheelDevice, idWheelPedal1Device, idWheelPedal2Device, idWheelPedal3Device}
 	if backend == "WinMM" {
 		a.devicesMu.RLock()
 		devs := append([]deviceInfo(nil), a.devices...)
@@ -4661,11 +5208,9 @@ func (a *appState) populateCombos() {
 			a.comboReset(id)
 			ids := []int{}
 			guids := []string{}
-			if id == idPedalDevice || id == idHotasThrottleDevice || id == idHotasStickDevice || id == idTwistLeftDevice || id == idTwistRightDevice {
-				a.comboAdd(id, "None")
-				ids = append(ids, -1)
-				guids = append(guids, "")
-			}
+			a.comboAdd(id, "None")
+			ids = append(ids, -1)
+			guids = append(guids, "")
 			for _, d := range devs {
 				a.comboAdd(id, fmt.Sprintf("%s [WinMM ID %d]", d.Name, d.ID))
 				ids = append(ids, d.ID)
@@ -4695,7 +5240,7 @@ func (a *appState) populateCombos() {
 	if backend != "WinMM" {
 		axisList = diAxisNames
 	}
-	for _, id := range []int{idLeftAxis, idRightAxis, idPedalAxis, idHotasThrottleAxis, idHotasStickXAxis, idHotasStickYAxis, idTwistLeftAxis, idTwistRightAxis} {
+	for _, id := range []int{idLeftAxis, idRightAxis, idPedalAxis, idHotasThrottleAxis, idHotasStickXAxis, idHotasStickYAxis, idTwistLeftAxis, idTwistRightAxis, idWheelAxis, idWheelPedal1Axis, idWheelPedal2Axis, idWheelPedal3Axis} {
 		a.comboReset(id)
 		for _, name := range axisList {
 			a.comboAdd(id, name)
@@ -4708,7 +5253,7 @@ func (a *appState) populateCombos() {
 	}
 
 	a.comboReset(idControlMode)
-	for _, mode := range []string{"Podracer Style", "Traditional HOTAS"} {
+	for _, mode := range []string{"Podracer Style", "Traditional HOTAS", "Driving Wheel"} {
 		a.comboAdd(idControlMode, mode)
 	}
 
@@ -4718,7 +5263,7 @@ func (a *appState) populateCombos() {
 	}
 
 	a.comboReset(idPedalMode)
-	for _, mode := range []string{"Off", "Fine steering", "Move Camera", "Pitch", "Keyboard keys"} {
+	for _, mode := range []string{"Off", "Fine steering", "Move Camera", "Pitch", "Keyboard keys", "Boost/Drift"} {
 		a.comboAdd(idPedalMode, mode)
 	}
 
@@ -4730,9 +5275,13 @@ func (a *appState) populateCombos() {
 	}
 	for _, id := range []int{idTwistLeftMode, idTwistRightMode} {
 		a.comboReset(id)
-		for _, mode := range []string{"Off", "Fine steering", "Move Camera", "Pitch", "Keyboard keys"} {
+		for _, mode := range []string{"Off", "Fine steering", "Move Camera", "Pitch", "Keyboard keys", "Boost/Drift"} {
 			a.comboAdd(id, mode)
 		}
+	}
+	a.comboReset(idWheelPedal3Mode)
+	for _, mode := range []string{"Off", "Boost", "Drift"} {
+		a.comboAdd(idWheelPedal3Mode, mode)
 	}
 	a.comboReset(idOnFootMode)
 	for _, mode := range []string{"Off", "Thumbstick -> WASD", "Buttons -> WASD"} {
@@ -4766,6 +5315,8 @@ func (a *appState) applyConfigToUI() {
 	controlIdx := 0
 	if strings.EqualFold(normalizeControlMode(c.ControlMode), "HOTAS") {
 		controlIdx = 1
+	} else if normalizeControlMode(c.ControlMode) == "WHEEL" {
+		controlIdx = 2
 	}
 	comboSetIndex(idControlMode, controlIdx)
 	if normalizeInputBackend(c.InputBackend) == "WinMM" {
@@ -4773,7 +5324,11 @@ func (a *appState) applyConfigToUI() {
 		comboSetDevice(idHotasStickDevice, c.HotasStickID)
 		comboSetDevice(idLeftDevice, c.LeftID)
 		comboSetDevice(idRightDevice, c.RightID)
-		comboSetDevice(idPedalDevice, c.PedalID)
+		if normalizeControlMode(c.ControlMode) == "WHEEL" {
+			comboSetDevice(idPedalDevice, c.DrivingWheel.Handbrake.DeviceID)
+		} else {
+			comboSetDevice(idPedalDevice, c.PedalID)
+		}
 		comboSetDevice(idTwistLeftDevice, c.TwistLeft.DeviceID)
 		comboSetDevice(idTwistRightDevice, c.TwistRight.DeviceID)
 	} else {
@@ -4781,7 +5336,11 @@ func (a *appState) applyConfigToUI() {
 		comboSetGUID(idHotasStickDevice, c.HotasStickDIGUID)
 		comboSetGUID(idLeftDevice, c.LeftDIGUID)
 		comboSetGUID(idRightDevice, c.RightDIGUID)
-		comboSetGUID(idPedalDevice, c.PedalDIGUID)
+		if normalizeControlMode(c.ControlMode) == "WHEEL" {
+			comboSetGUID(idPedalDevice, c.DrivingWheel.Handbrake.DIGUID)
+		} else {
+			comboSetGUID(idPedalDevice, c.PedalDIGUID)
+		}
 		comboSetGUID(idTwistLeftDevice, c.TwistLeft.DIGUID)
 		comboSetGUID(idTwistRightDevice, c.TwistRight.DIGUID)
 	}
@@ -4803,14 +5362,35 @@ func (a *appState) applyConfigToUI() {
 	setChecked(a.controls[idHotasStickInvertY], c.HotasStickInvertY)
 	comboSetIndex(idLeftAxis, c.LeftAxis)
 	comboSetIndex(idRightAxis, c.RightAxis)
-	comboSetIndex(idPedalAxis, c.PedalAxis)
+	if normalizeControlMode(c.ControlMode) == "WHEEL" {
+		comboSetIndex(idPedalAxis, c.DrivingWheel.Handbrake.Axis)
+	} else {
+		comboSetIndex(idPedalAxis, c.PedalAxis)
+	}
 	a.applyAuxiliaryAxisToUI(c.TwistLeft, true)
 	a.applyAuxiliaryAxisToUI(c.TwistRight, false)
+	for _, row := range []struct {
+		v                    wheelAxisConfig
+		device, axis, invert int
+	}{
+		{c.DrivingWheel.Wheel, idWheelDevice, idWheelAxis, idWheelInvert},
+		{c.DrivingWheel.Pedal1, idWheelPedal1Device, idWheelPedal1Axis, idWheelPedal1Invert},
+		{c.DrivingWheel.Pedal2, idWheelPedal2Device, idWheelPedal2Axis, idWheelPedal2Invert},
+		{c.DrivingWheel.Pedal3, idWheelPedal3Device, idWheelPedal3Axis, idWheelPedal3Invert},
+	} {
+		a.applyWheelAxis(row.v, row.device, row.axis, row.invert, normalizeInputBackend(c.InputBackend))
+	}
+	comboSetIndex(idWheelPedal3Mode, indexInOptions(a.comboOptions[idWheelPedal3Mode], c.DrivingWheel.Pedal3Mode))
+	setChecked(a.controls[idWheelHandbrakeButton], c.DrivingWheel.HandbrakeButton)
 	setChecked(a.controls[idLeftInvert], c.LeftInvert)
 	setChecked(a.controls[idRightInvert], c.RightInvert)
 	setChecked(a.controls[idLeftThrottleMode], c.LeftThrottleMode)
 	setChecked(a.controls[idRightThrottleMode], c.RightThrottleMode)
-	setChecked(a.controls[idPedalInvert], c.PedalInvert)
+	if normalizeControlMode(c.ControlMode) == "WHEEL" {
+		setChecked(a.controls[idPedalInvert], c.DrivingWheel.Handbrake.Invert)
+	} else {
+		setChecked(a.controls[idPedalInvert], c.PedalInvert)
+	}
 	setChecked(a.controls[idWASDInvertSide], c.ThumbWASDInvertSide)
 	setChecked(a.controls[idWASDInvertForward], c.ThumbWASDInvertForward)
 	modeIdx := 0
@@ -4822,8 +5402,13 @@ func (a *appState) applyConfigToUI() {
 		modeIdx = 3
 	} else if strings.EqualFold(c.PedalMode, "Keyboard keys") {
 		modeIdx = 4
+	} else if c.PedalMode == "Boost/Drift" {
+		modeIdx = 5
 	}
-	comboSetIndex(idPedalMode, modeIdx)
+	a.populatePedalModes(normalizeControlMode(c.ControlMode))
+	if normalizeControlMode(c.ControlMode) != "WHEEL" {
+		comboSetIndex(idPedalMode, modeIdx)
+	}
 	onFootIdx := 0
 	switch normalizeOnFootMode(c.OnFootMode) {
 	case "Thumbstick -> WASD":
@@ -4834,7 +5419,6 @@ func (a *appState) applyConfigToUI() {
 	comboSetIndex(idOnFootMode, onFootIdx)
 	comboSetIndex(idPedalLeftKey, keyOptionIndex(c.PedalLeftKey))
 	comboSetIndex(idPedalRightKey, keyOptionIndex(c.PedalRightKey))
-	setText(a.controls[idDeadzone], strconv.Itoa(c.Deadzone))
 	setText(a.controls[idPedalStrength], strconv.Itoa(c.PedalSteerStrength))
 	setText(a.controls[idCameraSensitivity], strconv.Itoa(c.CameraSensitivity))
 	setText(a.controls[idCameraDeadzone], strconv.Itoa(c.CameraDeadzone))
@@ -4849,11 +5433,58 @@ func (a *appState) applyConfigToUI() {
 	}
 	comboSetIndex(idPollingRate, pidx)
 	setChecked(a.controls[idPreserve], c.PreserveThrust)
+	setChecked(a.controls[idMonitorDuringGameplay], c.MonitorDuringGameplay)
 	if a.uiReady {
 		a.updateContextVisibility()
 	}
 }
 
+func indexInOptions(list []string, value string) int {
+	for i, v := range list {
+		if v == value {
+			return i
+		}
+	}
+	return 0
+}
+func auxiliaryModeOptions(axisType string) []string {
+	modes := []string{"Off", "Fine steering", "Move Camera", "Pitch", "Keyboard keys"}
+	if normalizeAxisType(axisType) == "Lever" {
+		return append(modes, "Boost", "Drift")
+	}
+	return append(modes, "Boost/Drift")
+}
+func (a *appState) setComboOptions(id int, opts []string) {
+	a.comboReset(id)
+	for _, o := range opts {
+		a.comboAdd(id, o)
+	}
+}
+func (a *appState) selectedComboText(id int) string {
+	opts := a.comboOptions[id]
+	if i := comboIndex(id); i >= 0 && i < len(opts) {
+		return opts[i]
+	}
+	return "Off"
+}
+func (a *appState) populatePedalModes(mode string) {
+	a.cfgMu.RLock()
+	c := a.cfg
+	a.cfgMu.RUnlock()
+	opts := []string{"Off", "Fine steering", "Move Camera", "Pitch", "Keyboard keys", "Boost/Drift"}
+	selected := c.PedalMode
+	if mode == "WHEEL" {
+		opts = []string{"Boost", "Drift"}
+		selected = c.DrivingWheel.HandbrakeMode
+	}
+	a.setComboOptions(idPedalMode, opts)
+	for i, m := range opts {
+		if m == selected {
+			comboSetIndex(idPedalMode, i)
+			break
+		}
+	}
+}
 func auxiliaryIDs(left bool) []int {
 	if left {
 		return []int{idTwistLeftDevice, idTwistLeftAxis, idTwistLeftInvert, idTwistLeftAxisType, idTwistLeftDeadzone, idTwistLeftMode, idTwistLeftStrength, idTwistLeftCameraSensitivity, idTwistLeftCameraDeadzone, idTwistLeftLeftKey, idTwistLeftRightKey, idTwistLeftKeyThreshold, idTwistLeftOutputNegative}
@@ -4871,8 +5502,8 @@ func (a *appState) applyAuxiliaryAxisToUI(v auxiliaryAxisConfig, left bool) {
 	} else {
 		comboSetIndex(ids[3], 0)
 	}
-	setText(a.controls[ids[4]], strconv.Itoa(v.Deadzone))
-	modes := []string{"Off", "Fine steering", "Move Camera", "Pitch", "Keyboard keys"}
+	modes := auxiliaryModeOptions(v.AxisType)
+	a.setComboOptions(ids[5], modes)
 	for i, mode := range modes {
 		if strings.EqualFold(mode, v.Mode) {
 			comboSetIndex(ids[5], i)
@@ -4909,8 +5540,8 @@ func (a *appState) readAuxiliaryAxisFromUI(v auxiliaryAxisConfig, left bool) aux
 	v.Invert = isChecked(a.controls[ids[2]])
 	v.OutputNegative = isChecked(a.controls[ids[12]])
 	v.AxisType = []string{"Centered", "Lever"}[min(comboIndex(ids[3]), 1)]
-	v.Deadzone = readLimitedUIInt(a.controls[ids[4]], v.Deadzone, 0, 40)
-	modes := []string{"Off", "Fine steering", "Move Camera", "Pitch", "Keyboard keys"}
+	// Axis deadzone is managed exclusively in Axis Tuning.
+	modes := auxiliaryModeOptions(v.AxisType)
 	v.Mode = modes[min(comboIndex(ids[5]), len(modes)-1)]
 	v.SteerStrength = readLimitedUIInt(a.controls[ids[6]], v.SteerStrength, 0, 100)
 	v.CameraSensitivity = readLimitedUIInt(a.controls[ids[7]], v.CameraSensitivity, 10, 250)
@@ -4934,7 +5565,9 @@ func comboSetIndex(id, idx int) {
 		idx = len(opts) - 1
 	}
 	app.comboSelected[id] = idx
-	setText(app.controls[id], opts[idx]+"  v")
+	if h := app.controls[id]; h != 0 {
+		procSendMessageW.Call(h, CB_SETCURSEL, uintptr(idx), 0)
+	}
 }
 func comboSetDevice(id, deviceID int) {
 	ids := app.deviceComboIDs[id]
@@ -5001,6 +5634,22 @@ func comboDevice(id int) int {
 	return -1
 }
 
+func (a *appState) readWheelAxis(v wheelAxisConfig, deviceID, axisID, invertID int) wheelAxisConfig {
+	v.DeviceID = comboDevice(deviceID)
+	v.DIGUID = comboGUID(deviceID)
+	v.Axis = comboIndex(axisID)
+	v.Invert = isChecked(a.controls[invertID])
+	return v
+}
+func (a *appState) applyWheelAxis(v wheelAxisConfig, deviceID, axisID, invertID int, backend string) {
+	if backend == "WinMM" {
+		comboSetDevice(deviceID, v.DeviceID)
+	} else {
+		comboSetGUID(deviceID, v.DIGUID)
+	}
+	comboSetIndex(axisID, v.Axis)
+	setChecked(a.controls[invertID], v.Invert)
+}
 func (a *appState) syncConfigFromUI() {
 	if !a.uiReady {
 		return
@@ -5013,7 +5662,7 @@ func (a *appState) syncConfigFromUI() {
 		bi = 0
 	}
 	c.InputBackend = backendModes[bi]
-	controlModes := []string{"HOSAS", "HOTAS"}
+	controlModes := []string{"HOSAS", "HOTAS", "WHEEL"}
 	ci := comboIndex(idControlMode)
 	if ci < 0 || ci >= len(controlModes) {
 		ci = 0
@@ -5024,19 +5673,25 @@ func (a *appState) syncConfigFromUI() {
 		c.HotasStickID = comboDevice(idHotasStickDevice)
 		c.LeftID = comboDevice(idLeftDevice)
 		c.RightID = comboDevice(idRightDevice)
-		c.PedalID = comboDevice(idPedalDevice)
+		if c.ControlMode != "WHEEL" {
+			c.PedalID = comboDevice(idPedalDevice)
+		}
 	} else {
 		c.HotasThrottleDIGUID = comboGUID(idHotasThrottleDevice)
 		c.HotasStickDIGUID = comboGUID(idHotasStickDevice)
 		c.LeftDIGUID = comboGUID(idLeftDevice)
 		c.RightDIGUID = comboGUID(idRightDevice)
-		c.PedalDIGUID = comboGUID(idPedalDevice)
+		if c.ControlMode != "WHEEL" {
+			c.PedalDIGUID = comboGUID(idPedalDevice)
+		}
 		// Keep a matching WinMM ID when names line up so Auto has a safe legacy fallback.
 		c.HotasThrottleID = comboDevice(idHotasThrottleDevice)
 		c.HotasStickID = comboDevice(idHotasStickDevice)
 		c.LeftID = comboDevice(idLeftDevice)
 		c.RightID = comboDevice(idRightDevice)
-		c.PedalID = comboDevice(idPedalDevice)
+		if c.ControlMode != "WHEEL" {
+			c.PedalID = comboDevice(idPedalDevice)
+		}
 	}
 	c.HotasThrottleAxis = comboIndex(idHotasThrottleAxis)
 	c.HotasThrottleInvert = isChecked(a.controls[idHotasThrottleInvert])
@@ -5070,7 +5725,9 @@ func (a *appState) syncConfigFromUI() {
 	c.HotasStickInvertY = isChecked(a.controls[idHotasStickInvertY])
 	c.LeftAxis = comboIndex(idLeftAxis)
 	c.RightAxis = comboIndex(idRightAxis)
-	c.PedalAxis = comboIndex(idPedalAxis)
+	if c.ControlMode != "WHEEL" {
+		c.PedalAxis = comboIndex(idPedalAxis)
+	}
 	c.TwistLeft = a.readAuxiliaryAxisFromUI(c.TwistLeft, true)
 	c.TwistRight = a.readAuxiliaryAxisFromUI(c.TwistRight, false)
 	pi := comboIndex(idPollingRate)
@@ -5081,15 +5738,29 @@ func (a *appState) syncConfigFromUI() {
 	c.RightInvert = isChecked(a.controls[idRightInvert])
 	c.LeftThrottleMode = isChecked(a.controls[idLeftThrottleMode])
 	c.RightThrottleMode = isChecked(a.controls[idRightThrottleMode])
-	c.PedalInvert = isChecked(a.controls[idPedalInvert])
+	if c.ControlMode != "WHEEL" {
+		c.PedalInvert = isChecked(a.controls[idPedalInvert])
+	}
 	c.ThumbWASDInvertSide = isChecked(a.controls[idWASDInvertSide])
 	c.ThumbWASDInvertForward = isChecked(a.controls[idWASDInvertForward])
-	modes := []string{"Off", "Fine steering", "Move Camera", "Pitch", "Keyboard keys"}
-	mi := comboIndex(idPedalMode)
-	if mi < 0 || mi >= len(modes) {
-		mi = 0
+	if c.ControlMode == "WHEEL" {
+		if a.selectedComboText(idPedalMode) == "Boost" {
+			c.DrivingWheel.HandbrakeMode = "Boost"
+		} else {
+			c.DrivingWheel.HandbrakeMode = "Drift"
+		}
+	} else {
+		c.PedalMode = normalizePedalMode(a.selectedComboText(idPedalMode))
 	}
-	c.PedalMode = modes[mi]
+	c.DrivingWheel.Wheel = a.readWheelAxis(c.DrivingWheel.Wheel, idWheelDevice, idWheelAxis, idWheelInvert)
+	c.DrivingWheel.Pedal1 = a.readWheelAxis(c.DrivingWheel.Pedal1, idWheelPedal1Device, idWheelPedal1Axis, idWheelPedal1Invert)
+	c.DrivingWheel.Pedal2 = a.readWheelAxis(c.DrivingWheel.Pedal2, idWheelPedal2Device, idWheelPedal2Axis, idWheelPedal2Invert)
+	c.DrivingWheel.Pedal3 = a.readWheelAxis(c.DrivingWheel.Pedal3, idWheelPedal3Device, idWheelPedal3Axis, idWheelPedal3Invert)
+	c.DrivingWheel.Pedal3Mode = a.selectedComboText(idWheelPedal3Mode)
+	if c.ControlMode == "WHEEL" {
+		c.DrivingWheel.Handbrake = a.readWheelAxis(c.DrivingWheel.Handbrake, idPedalDevice, idPedalAxis, idPedalInvert)
+	}
+	c.DrivingWheel.HandbrakeButton = isChecked(a.controls[idWheelHandbrakeButton])
 	onFootModes := []string{"Off", "Thumbstick -> WASD", "Buttons -> WASD"}
 	oi := comboIndex(idOnFootMode)
 	if oi < 0 || oi >= len(onFootModes) {
@@ -5117,15 +5788,6 @@ func (a *appState) syncConfigFromUI() {
 			n = 95
 		}
 		c.PedalKeyThreshold = n
-	}
-	if n, e := strconv.Atoi(strings.TrimSpace(getText(a.controls[idDeadzone]))); e == nil {
-		if n < 0 {
-			n = 0
-		}
-		if n > 40 {
-			n = 40
-		}
-		c.Deadzone = n
 	}
 	if n, e := strconv.Atoi(strings.TrimSpace(getText(a.controls[idPedalStrength]))); e == nil {
 		if n < 0 {
@@ -5155,25 +5817,22 @@ func (a *appState) syncConfigFromUI() {
 		c.CameraDeadzone = n
 	}
 	c.PreserveThrust = isChecked(a.controls[idPreserve])
+	c.MonitorDuringGameplay = isChecked(a.controls[idMonitorDuringGameplay])
 	a.cfg = c
 	a.cfgMu.Unlock()
 }
 
 func (a *appState) onCommand(id, notify int) {
-	if id == idComboList && (notify == LBN_SELCHANGE || notify == LBN_DBLCLK) {
-		a.closeCombo(true)
-		return
-	}
-	if id == idComboList && notify == LBN_KILLFOCUS {
-		a.closeCombo(false)
-		return
-	}
-	if a.isComboID(id) && notify == BN_CLICKED {
-		a.toggleCombo(id)
-		return
-	}
-	if a.comboActiveID != 0 {
-		a.closeCombo(false)
+	// Native combo selection notifications are authoritative: synchronize
+	// option index before any mode/device/axis handler reads comboIndex().
+	if notify == CBN_SELCHANGE && a.isComboID(id) {
+		if h := a.controls[id]; h != 0 {
+			v, _, _ := procSendMessageW.Call(h, CB_GETCURSEL, 0, 0)
+			idx := int(int32(v))
+			if idx >= 0 && idx < len(a.comboOptions[id]) {
+				a.comboSelected[id] = idx
+			}
+		}
 	}
 	switch {
 	case id == idStart && notify == BN_CLICKED:
@@ -5224,6 +5883,9 @@ func (a *appState) onCommand(id, notify int) {
 		a.cameraTestMu.Unlock()
 		a.postStatus("Camera test: virtual Xbox Right Stick X = full RIGHT for 0.8 seconds.")
 		return
+	case id == idSocialLinks && notify == BN_CLICKED:
+		procShellExecuteW.Call(0, uintptr(unsafe.Pointer(utf16ptr("open"))), uintptr(unsafe.Pointer(utf16ptr("https://linktr.ee/jaffaquake"))), 0, 0, SW_SHOW)
+		return
 	case id == idHidHideSetup && notify == BN_CLICKED:
 		a.openHidHideSetup()
 		return
@@ -5246,6 +5908,7 @@ func (a *appState) onCommand(id, notify int) {
 		}
 		a.populateCombos()
 		a.applyConfigToUI()
+		a.updateContextVisibility()
 		if backend == "WinMM" {
 			a.postStatus("WinMM compatibility device list refreshed through the isolated helper.")
 		} else {
@@ -5257,6 +5920,24 @@ func (a *appState) onCommand(id, notify int) {
 		return
 	case id == idDetectRight && notify == BN_CLICKED:
 		a.startDetect("Right")
+		return
+	case id == idWheelDetect && notify == BN_CLICKED:
+		a.startDetect("Wheel Steering")
+		return
+	case id == idWheelPedal1Detect && notify == BN_CLICKED:
+		a.startDetect("Wheel Pedal 1")
+		return
+	case id == idWheelPedal2Detect && notify == BN_CLICKED:
+		a.startDetect("Wheel Pedal 2")
+		return
+	case id == idWheelPedal3Detect && notify == BN_CLICKED:
+		a.startDetect("Wheel Pedal 3")
+		return
+	case id == idWheelHandbrakeDetect && notify == BN_CLICKED:
+		a.startDetect("Wheel Hand Brake")
+		return
+	case id == idWheelHandbrakeLearn && notify == BN_CLICKED:
+		a.startLearn("WHEELHANDBRAKE", "Hand Brake button")
 		return
 	case id == idDetectWASD && notify == BN_CLICKED:
 		a.startDetectThumbstick()
@@ -5302,9 +5983,64 @@ func (a *appState) onCommand(id, notify int) {
 		return
 	}
 	if notify == CBN_SELCHANGE || notify == EN_CHANGE || notify == BN_CLICKED {
+		if (id == idTwistLeftAxisType || id == idTwistRightAxisType) && notify == CBN_SELCHANGE {
+			modeID := idTwistLeftMode
+			if id == idTwistRightAxisType {
+				modeID = idTwistRightMode
+			}
+			previousMode := a.selectedComboText(modeID)
+			axisType := "Centered"
+			if comboIndex(id) == 1 {
+				axisType = "Lever"
+			}
+			opts := auxiliaryModeOptions(axisType)
+			a.setComboOptions(modeID, opts)
+			comboSetIndex(modeID, indexInOptions(opts, previousMode)) // invalid old type-specific modes become Off
+		}
+		if id == idControlMode && notify == CBN_SELCHANGE {
+			modes := []string{"HOSAS", "HOTAS", "WHEEL"}
+			idx := comboIndex(idControlMode)
+			if idx >= len(modes) {
+				idx = 0
+			}
+			a.cfgMu.Lock()
+			a.cfg.ControlMode = modes[idx]
+			a.cfgMu.Unlock()
+			a.populatePedalModes(modes[idx])
+			a.cfgMu.RLock()
+			c := a.cfg
+			a.cfgMu.RUnlock()
+			if modes[idx] == "WHEEL" {
+				if normalizeInputBackend(c.InputBackend) == "WinMM" {
+					comboSetDevice(idPedalDevice, c.DrivingWheel.Handbrake.DeviceID)
+				} else {
+					comboSetGUID(idPedalDevice, c.DrivingWheel.Handbrake.DIGUID)
+				}
+				comboSetIndex(idPedalAxis, c.DrivingWheel.Handbrake.Axis)
+				setChecked(a.controls[idPedalInvert], c.DrivingWheel.Handbrake.Invert)
+			} else {
+				if normalizeInputBackend(c.InputBackend) == "WinMM" {
+					comboSetDevice(idPedalDevice, c.PedalID)
+				} else {
+					comboSetGUID(idPedalDevice, c.PedalDIGUID)
+				}
+				comboSetIndex(idPedalAxis, c.PedalAxis)
+				setChecked(a.controls[idPedalInvert], c.PedalInvert)
+			}
+		}
 		a.syncConfigFromUI()
-		saveConfig()
+		saveConfig() // Includes polling_hz; a changed rate survives software updates.
 		if notify == CBN_SELCHANGE {
+			if id == idTwistLeftAxisType || id == idTwistRightAxisType {
+				a.cfgMu.RLock()
+				c := a.cfg
+				a.cfgMu.RUnlock()
+				if id == idTwistLeftAxisType {
+					a.applyAuxiliaryAxisToUI(c.TwistLeft, true)
+				} else {
+					a.applyAuxiliaryAxisToUI(c.TwistRight, false)
+				}
+			}
 			a.updateContextVisibility()
 		}
 	}
@@ -5314,9 +6050,9 @@ func (a *appState) mappingStatus() string {
 	if a.xboxReady.Load() {
 		s := a.xboxSlot.Load()
 		if s >= 0 {
-			return fmt.Sprintf("Mapping ACTIVE. Windows sees Xbox controller in XInput slot %d.", s+1)
+			return fmt.Sprintf("Mapping ACTIVE. Windows sees Xbox controller in XInput slot %d.\r\nIn Galactic Racer, set your controller scheme to Default.", s+1)
 		}
-		return "Mapping ACTIVE. Virtual Xbox controller is running."
+		return "Mapping ACTIVE. Virtual Xbox controller is running.\r\nIn Galactic Racer, set your controller scheme to Default."
 	}
 	return "Mapping ACTIVE, but Xbox output is not ready yet."
 }
@@ -5325,6 +6061,9 @@ func (a *appState) refreshXboxUI() {
 	if a.controls[idStart] == 0 {
 		return
 	}
+	// Called on every virtual-controller start/stop completion message. Make
+	// diagnostics track actual readiness, including failed initialization.
+	defer a.updateContextVisibility()
 	if a.mappingStarting.Load() {
 		setText(a.controls[idStart], "Initiating...")
 		return
@@ -5431,11 +6170,11 @@ func (a *appState) refreshMonitor() {
 
 	const boxSize = 126
 
-	// The live visual layer is intentionally suspended while controller mapping is active.
-	// This leaves the fast 100 Hz input/output loop focused on the game.
-	if a.mappingActive.Load() {
+	// Only the opt-in gameplay monitor refreshes visuals while mapping is active.
+	// UI refresh remains at 10 Hz regardless of controller polling frequency.
+	if !shouldRenderMonitor(a.mappingActive.Load(), c.MonitorDuringGameplay) {
 		if !a.visualsPaused {
-			setText(a.controls[idMonitor], "Live visual monitor PAUSED while game mapping is active.\r\nController polling/output remains active at the selected polling rate.")
+			setText(a.controls[idMonitor], "Live visual monitor PAUSED while game mapping is active.\r\nEnable Monitor during gameplay to show live controls (slight CPU impact).")
 			a.setButtonTileStates(0)
 			a.setOnFootButtonStates(0)
 			a.moveStickDot(idLeftDot, boxSize, 0, 0)
@@ -5453,11 +6192,13 @@ func (a *appState) refreshMonitor() {
 	mode := "Podracer Style: Average thrust"
 	if strings.EqualFold(normalizeControlMode(c.ControlMode), "HOTAS") {
 		mode = "Traditional HOTAS"
+	} else if normalizeControlMode(c.ControlMode) == "WHEEL" {
+		mode = "Driving Wheel"
 	} else if c.PreserveThrust {
 		mode = "Podracer Style: Hybrid preserve thrust"
 	}
 	pedal := "Off"
-	if c.PedalID >= 0 {
+	if c.PedalID >= 0 && normalizeControlMode(c.ControlMode) != "WHEEL" {
 		pedal = fmt.Sprintf("%+.2f", m.Pedal)
 	}
 	camera := "Off"
@@ -5469,7 +6210,10 @@ func (a *appState) refreshMonitor() {
 		camera = fmt.Sprintf("Keys %s / %s @ %d%%", keyName(c.PedalLeftKey), keyName(c.PedalRightKey), c.PedalKeyThreshold)
 	}
 	var s string
-	if strings.EqualFold(normalizeControlMode(c.ControlMode), "HOTAS") {
+	if normalizeControlMode(c.ControlMode) == "WHEEL" {
+		s = fmt.Sprintf("Wheel steer %+.2f  Throttle %.2f  Brake %.2f\r\nAdditional Input 1 %+.2f  Input 2 %+.2f  Pedal 3: %s / Hand Brake: %s\r\n%s",
+			m.Steer, m.Drive, m.RightY, m.TwistLeft, m.TwistRight, c.DrivingWheel.Pedal3Mode, c.DrivingWheel.HandbrakeMode, mode)
+	} else if strings.EqualFold(normalizeControlMode(c.ControlMode), "HOTAS") {
 		brakeText := fmt.Sprintf("%.0f%%", m.HotasBrakeAmount*100.0)
 		s = fmt.Sprintf(
 			"Throttle %.2f  Brake %s  Stick X %+.2f  Stick Y %+.2f\r\nTwist L %+.2f  R %+.2f  Pedal %s  Output %s\r\n%s",
@@ -5486,8 +6230,17 @@ func (a *appState) refreshMonitor() {
 	a.moveStickDot(idLeftDot, boxSize, m.LeftX, m.LeftY)
 	a.moveStickDot(idRightDot, boxSize, m.RightX, m.RightY)
 	a.moveStickDot(idDriveSteerDot, boxSize, m.Steer, m.Drive)
-	setText(a.controls[idLeftVectorText], fmt.Sprintf("Side %+0.2f  F %+0.2f", m.LeftX, m.LeftY))
-	setText(a.controls[idRightVectorText], fmt.Sprintf("Side %+0.2f  F %+0.2f", m.RightX, m.RightY))
+	if normalizeControlMode(c.ControlMode) == "WHEEL" || normalizeControlMode(c.ControlMode) == "HOTAS" {
+		setText(a.controls[idLeftVectorText], fmt.Sprintf("Throttle %.2f\r\nBrake %.2f", math.Max(0, m.LeftY), math.Max(0, -m.LeftY)))
+		if normalizeControlMode(c.ControlMode) == "WHEEL" {
+			setText(a.controls[idRightVectorText], fmt.Sprintf("Wheel %+.2f", m.RightX))
+		} else {
+			setText(a.controls[idRightVectorText], fmt.Sprintf("Stick X %+.2f\r\nStick Y %+.2f", m.RightX, m.RightY))
+		}
+	} else {
+		setText(a.controls[idLeftVectorText], fmt.Sprintf("Side %+0.2f  F %+0.2f", m.LeftX, m.LeftY))
+		setText(a.controls[idRightVectorText], fmt.Sprintf("Side %+0.2f  F %+0.2f", m.RightX, m.RightY))
+	}
 	driveDir := "Neutral"
 	if m.Drive > 0.01 {
 		driveDir = "Forward"
@@ -5528,7 +6281,7 @@ func (a *appState) startDetect(side string) {
 	if backend != "WinMM" {
 		go func() {
 			guid, name, axis, _, span, score, ok := a.detectDirectInputAxis(
-				fmt.Sprintf("Detecting %s stick through DirectInput: PUSH THAT STICK FORWARD now...", side), "", -1,
+				fmt.Sprintf("Detecting %s through DirectInput: MOVE/PRESS THIS INPUT to its maximum now...", side), "", -1,
 			)
 			if !ok {
 				if backend == "Auto" {
@@ -5547,7 +6300,7 @@ func (a *appState) startDetect(side string) {
 }
 
 func (a *appState) startDetectWinMM(side string) {
-	a.postStatus(fmt.Sprintf("Detecting %s stick through WinMM: PUSH THAT STICK FORWARD now...", side))
+	a.postStatus(fmt.Sprintf("Detecting %s through WinMM: MOVE/PRESS THIS INPUT to its maximum now...", side))
 	go func() {
 		devs := enumerateDevices()
 		if len(devs) == 0 {
@@ -5781,6 +6534,28 @@ func (a *appState) drainDetect() {
 			}
 			a.cfg.RightAxis = r.Axis
 			a.cfg.RightInvert = r.Invert
+		} else if strings.HasPrefix(r.Side, "Wheel") {
+			var w *wheelAxisConfig
+			switch r.Side {
+			case "Wheel Steering":
+				w = &a.cfg.DrivingWheel.Wheel
+			case "Wheel Pedal 1":
+				w = &a.cfg.DrivingWheel.Pedal1
+			case "Wheel Pedal 2":
+				w = &a.cfg.DrivingWheel.Pedal2
+			case "Wheel Pedal 3":
+				w = &a.cfg.DrivingWheel.Pedal3
+			case "Wheel Hand Brake":
+				w = &a.cfg.DrivingWheel.Handbrake
+			}
+			if w != nil {
+				w.DeviceID = r.DeviceID
+				if r.UseDirectInput {
+					w.DIGUID = r.DISideGUID
+				}
+				w.Axis = r.Axis
+				w.Invert = r.Invert
+			}
 		} else if r.Side == "Thumbstick" {
 			if r.UseDirectInput {
 				a.cfg.OnFootMode = "Thumbstick -> WASD"
@@ -5801,6 +6576,7 @@ func (a *appState) drainDetect() {
 		}
 		a.cfgMu.Unlock()
 		a.applyConfigToUI()
+		a.updateContextVisibility() // Newly detected hardware reveals its axis and mode options.
 		saveConfig()
 		if r.Side == "Thumbstick" {
 			if r.UseDirectInput {

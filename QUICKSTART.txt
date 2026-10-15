@@ -1,25 +1,85 @@
-GALACTIC RACER HOSAS / HOTAS BRIDGE v1.98.3 — QUICK START
-by JaffaQuake and Mars
+GALACTIC RACER HOSAS / HOTAS BRIDGE — v2.1.7 QUICKSTART
+=============================================================
+1. Unzip all files, run Install.cmd on Windows x64.
+2. Choose Podracer Style, Traditional HOTAS, or Driving Wheel.
+3. Driving Wheel: select Wheel device/axis, invert as needed, or click Detect
+   and TURN WHEEL RIGHT. Steering is centered -100..+100%.
+4. Pedal 1 (Throttle) and Pedal 2 (Brake) are separate one-way 0..100% levers.
+   For each, select device and axis, invert if needed, or press its Detect button.
+   Pedal 1 outputs Xbox Right Trigger; Pedal 2 outputs Xbox Left Trigger.
+5. Optional Pedal 3 (Clutch) has independent device/axis/invert/Detect and
+   Off/Boost/Drift. Boost outputs Xbox A, Drift Xbox X, full digital press.
+6. The Rudder Pedals section becomes Hand Brake in Driving Wheel mode;
+   the Rudder Pedals-only "Pedal device" caption is hidden in that mode.
+   Use an analog 0..100% lever with device/axis/invert and Detect, OR
+   check Button then click Learn Btn and operate your digital handbrake.
+   The Hand Brake Mode dropdown offers Boost or Drift only.
+7. Open the Input Curves/Axis Tuning tab to calibrate per-input deadzones,
+   curves and saturation. Changes take effect immediately and save automatically;
+   Reset This Axis restores defaults.
+   Wheel pedals and handbrake have dedicated tuning profiles. A post-deadzone
+   nonzero Boost/Drift signal sends a full button press.
+8. Additional Analogue Inputs in Centered mode: Boost/Drift maps negative
+   to Drift (X), positive to Boost (A). Invert swaps directions. In Lever
+   mode: separate Boost and Drift selections are available.
+9. In On-Foot Controls choose Thumbstick -> WASD and Detect Thumbstick.
+   The saved assignment is shown below the DirectInput monitor after restart.
+10. Select Initiate Xbox Controller; in Galactic Racer set the in-game controller scheme to Default. You can still click Save settings for manual settings changes.
+11. Do not use two modes simultaneously: changing mode retains each mode's
+    settings independently. Keep existing configuration file between updates.
 
-1. Extract ZIP and double-click Install.cmd (Windows x64).
-2. Input API: Auto (DirectInput first), DirectInput, or WinMM (isolated helper).
-3. Select Podracer Style HOSAS or Traditional HOTAS; assign sticks and axes.
-4. Twist Axis: choose independent Left and Right Twist devices/axes.
-   Type: Centered (-100%..+100%, default) or Lever (0%..100%).
-   Modes: Off, Fine Steering, Move Camera, Pitch, Keyboard Keys.
-   Set Invert and Deadzone. Lever also offers Output Negative (0..-100%).
-   Relevant mode settings appear beneath each twist.
-5. Rudder Pedals remain independent and retain their established modes.
-6. Standard Xbox mappings: Learn/Clear button and hat assignments in two columns.
-7. Galactic Racer Specific Mappings: Pitch Up/Down and Look Left/Right/Back.
-   The three Look commands continue to emit native keyboard output in-game,
-   despite the equivalent Xbox directional labels in the UI.
-8. Click Save settings, then Initiate Xbox Controller.
-9. HidHide Setup may help if a game sees physical and virtual devices twice.
+The Driver/ViGEm and WinMM restrictions from v2.0.6 remain applicable.
+Native Windows visual, actual controller, and 125%/150% DPI checks are pending.
 
-NOTE: Lever mode normally outputs 0..+100%. Check Output Negative for
-0..-100% output (including negative Fine Steering and negative keyboard keys).
-Invert continues to reverse physical travel independently of output polarity.
-Output Negative appears only for Lever and is unchecked by default.
+UI: The right pane has Mappings (default on launch) and Input Curves/Axis Tuning tabs. Polling Rate and (Podracer only) Hybrid Preserve Thrust are at the top of Calibration. Switching modes retains the selected tab until next launch.
 
-Settings: %LOCALAPPDATA%\GalacticRacerHOSAS\hosas_config.json
+VISUAL UPDATE v2.1.0 (retained): Main window #D4D4D4 (Option A), transparent label
+backgrounds in both tabs, red/blue/green monitor dots with full black rings.
+
+CALIBRATION UPDATE v2.1.1:
+- Polling Rate: native Windows dropdown, offering 100/200/250/500/1000 Hz.
+  Select your rate and check that it remains selected after a restart.
+- Input to Configure: only assigned, enabled inputs appear. Physically digital
+  buttons are not analog calibration entries.
+- Boost/Drift and other digital-output axes show Deadzone only; their saved
+  curve and full-output values are retained for future analog-mode use.
+- For analog axes, tick Live Input to drive the Test Travel marker with real
+  physical movement. Uncheck to return to the manual Test Travel slider.
+- Live Input preview never changes input mappings or controller output values;
+  curve/deadzone sliders still auto-apply and save independently.
+
+DROPDOWN UPDATE v2.1.2:
+- All main-window selectors now use native Windows dropdowns, including
+  mode, device, axis, pedal/auxiliary and keyboard choices.
+- Selected values and device GUIDs continue saving to existing hosas_config.json.
+- Native popup lists may not be visible in window-only screen recordings.
+- Full release history is consolidated in CHANGELOG.md. Installer keeps your
+  controller configuration and clears only known old generated release reports.
+
+TWO-STAGE CURVES v2.1.3:
+- Under Input Curves/Axis Tuning choose an active analog-output axis.
+- Response Curve 0.20–3.00 controls strength. Weighting 0–100 shifts the arc.
+- Optional Two Stage Curve adds independent Curve 2 and stage weighting.
+- Midpoint Position 50% is the starting diagonal position. Custom Midpoint
+  reveals independently adjustable X and Y (preset selector removed).
+- Full Output Point remains global. Changes save automatically.
+- Existing non-linear curves retain original output when upgrading, until
+  you change their Weighting. Full Output Point is not an output cap.
+
+
+v2.1.4 calibration update: In Two Stage mode, normal Midpoint Position is now
+a 10–90% slider with a live percentage readout. Enabling Custom Midpoint
+hides the diagonal slider and (in v2.1.4) showed midpoint presets
+alongside independent X Input / Y Output sliders. Presets are removed in v2.1.5. Calibration saves automatically;
+curve calculations and saved configuration keys are unchanged.
+
+
+v2.1.5 calibration layout: Curve 1 and Curve 2 appear above Midpoint.
+Click Custom Midpoint to replace the diagonal midpoint slider with X and Y
+sliders in the same area, without leaving an empty row. Midpoint presets
+were removed. Auto-save and curve behavior are unchanged.
+
+
+v2.1.6: Find Full Output Point immediately beneath Deadzone in Axis Tuning.
+Two Stage mode lists Curve 1, Curve 2, then Custom Midpoint and its sliders,
+with no extra Midpoint heading. All edits apply automatically.

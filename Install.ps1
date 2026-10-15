@@ -1,5 +1,5 @@
 $ErrorActionPreference = 'Stop'
-Write-Host "Galactic Racer HOSAS / HOTAS Bridge v1.98.3 installer" -ForegroundColor Cyan
+Write-Host "Galactic Racer HOSAS / HOTAS Bridge v2.1.7 installer" -ForegroundColor Cyan
 
 function Get-LocalAppDataPath {
     $p = [Environment]::GetFolderPath('LocalApplicationData')
@@ -119,12 +119,15 @@ if (Test-Path -LiteralPath $sourceIcon) {
     Copy-Item -LiteralPath $sourceIcon -Destination (Join-Path $appDir 'GalacticRacerHOSAS.ico') -Force
 }
 
-foreach ($doc in @('LICENSE.txt','THIRD_PARTY_NOTICES.txt','QUICKSTART.txt','README.txt','INSTALLER_AUDIT_v1.98.3.txt','RELEASE_NOTES_v1.98.3.txt','BUILD_VALIDATION_v1.98.3.txt','WINMM_COMPATIBILITY.txt','SHA256_v1.98.3.txt')) {
+# Keep runtime documentation inside the installation. Release audits, hashes and
+# per-version notes belong in the downloadable archive/build workspace, not AppData.
+foreach ($doc in @('LICENSE.txt','THIRD_PARTY_NOTICES.txt','QUICKSTART.txt','README.txt','WINMM_COMPATIBILITY.txt','CHANGELOG.md')) {
     $docPath = Join-Path $sourceDir $doc
     if (Test-Path -LiteralPath $docPath) {
         Copy-Item -LiteralPath $docPath -Destination (Join-Path $appDir $doc) -Force
     }
 }
+
 
 # ViGEmClient.dll is MIT-licensed. Prefer a valid packaged/local copy. Otherwise fetch the
 # pinned vgamepad 0.1.0 source archive and select a DLL by PE architecture, not by folder name.
@@ -218,6 +221,23 @@ $desktop = [Environment]::GetFolderPath('Desktop')
 $programs = [Environment]::GetFolderPath('Programs')
 New-AppShortcut $desktop 'Galactic Racer HOSAS Bridge.lnk' $installedExe $appDir $iconPath
 New-AppShortcut $programs 'Galactic Racer HOSAS Bridge.lnk' $installedExe $appDir $iconPath
+
+
+# Explicitly limited, nonrecursive cleanup of obsolete generated installer artifacts.
+# DO NOT use a general wipe of AppData: hosas_config.json, user files, logs,
+# device assignments and unknown files must survive upgrades. Do not follow
+# symlinks/junctions or recurse into user-created folders.
+$legacyReleasePattern = '^(?:BUILD_VALIDATION|INSTALLER_AUDIT|SHA256|RELEASE_NOTES)_v[0-9][0-9A-Za-z.\-]*\.txt$'
+Get-ChildItem -LiteralPath $appDir -File -Force -ErrorAction SilentlyContinue | Where-Object {
+    $_.Name -match $legacyReleasePattern -and -not ($_.Attributes -band [IO.FileAttributes]::ReparsePoint)
+} | ForEach-Object {
+    try {
+        Remove-Item -LiteralPath $_.FullName -Force -ErrorAction Stop
+        Write-Host "Removed obsolete generated release artifact: $($_.Name)"
+    } catch {
+        Write-Warning "Could not clean obsolete file $($_.Name); skipped: $($_.Exception.Message)"
+    }
+}
 
 Write-Host ''
 Write-Host 'Installed successfully. Existing controller settings were preserved.' -ForegroundColor Green
