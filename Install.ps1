@@ -1,5 +1,5 @@
 $ErrorActionPreference = 'Stop'
-Write-Host "Galactic Racer HOSAS / HOTAS Bridge v2.1.7 installer" -ForegroundColor Cyan
+Write-Host "Galactic Racer HOSAS / HOTAS Bridge v2.2.3 official installer" -ForegroundColor Cyan
 
 function Get-LocalAppDataPath {
     $p = [Environment]::GetFolderPath('LocalApplicationData')
@@ -185,33 +185,57 @@ if (-not $dllReady) {
 
 Write-Host 'ViGEmClient.dll: x64 OK' -ForegroundColor Green
 
-# Install the virtual gamepad driver if it cannot be detected. Detection intentionally checks
-# services, system drivers, and PnP devices instead of assuming a single exact service name.
-$driverReady = Test-ViGEmBusInstalled
-if (-not $driverReady) {
-    Write-Host 'ViGEmBus was not detected. Attempting installation (Windows may request permission)...'
-    $winget = Get-Command winget.exe -ErrorAction SilentlyContinue
-    if ($winget) {
-        $wingetPath = $winget.Source
-        & $wingetPath install --id ViGEm.ViGEmBus -e --silent --accept-package-agreements --accept-source-agreements
-        if ($LASTEXITCODE -ne 0) {
-            Write-Warning "winget returned exit code $LASTEXITCODE while installing ViGEmBus."
-        }
-        # Driver registration can lag behind the package process. Retry rather than assuming that
-        # a half-second pause is enough on every Windows machine.
-        for ($i = 0; $i -lt 10 -and -not $driverReady; $i++) {
-            Start-Sleep -Seconds 1
-            $driverReady = Test-ViGEmBusInstalled
-        }
-    } else {
-        Write-Warning 'winget was not found. ViGEmBus must be installed manually before virtual Xbox output can work.'
-    }
+# Hardware readiness must be tested through ViGEmClient, not inferred from a
+# service name alone. The shipped executable exposes a no-UI, no-controller
+# preflight that connects and disconnects safely using the installed client DLL.
+$installedExe = Join-Path $appDir 'GalacticRacerHOSAS.exe'
+function Test-ViGEmBusConnectivity([string]$Exe) {
+    try {
+        $p = Start-Process -FilePath $Exe -ArgumentList '--check-vigem' -WorkingDirectory $appDir -PassThru -Wait -ErrorAction Stop
+        return ($p.ExitCode -eq 0)
+    } catch { return $false }
 }
 
+$driverReady = Test-ViGEmBusConnectivity $installedExe
+$driverPackageExit = $null
+if (-not $driverReady) {
+    if (Test-ViGEmBusInstalled) {
+        Write-Warning 'A ViGEmBus service or device was found, but ViGEmClient could not connect to it.'
+    } else {
+        Write-Warning 'No working ViGEmBus installation was detected.'
+    }
+    $driverScript = Join-Path $sourceDir 'Install-Driver.ps1'
+    if (-not (Test-Path -LiteralPath $driverScript -PathType Leaf)) {
+        Write-Warning 'Install-Driver.ps1 is missing. Re-extract the complete v2.2.3 archive.'
+    } else {
+        Write-Host 'Requesting administrator approval for ViGEmBus ONLY (the application itself stays unelevated)...' -ForegroundColor Cyan
+        try {
+            $args = '-NoProfile -ExecutionPolicy Bypass -File "' + $driverScript + '"'
+            $elevated = Start-Process -FilePath 'powershell.exe' -ArgumentList $args -Verb RunAs -PassThru -Wait -ErrorAction Stop
+            $driverPackageExit = $elevated.ExitCode
+            if ($driverPackageExit -ne 0) {
+                Write-Warning "Driver setup did not complete (status $driverPackageExit)."
+            }
+        } catch {
+            Write-Warning "Driver elevation or installation was declined or failed: $($_.Exception.Message)"
+        }
+    }
+    # Driver registration can lag behind installer completion; probe the actual
+    # ViGEmClient connection after each retry rather than checking only names.
+    for ($i = 0; $i -lt 10 -and -not $driverReady; $i++) {
+        Start-Sleep -Seconds 1
+        $driverReady = Test-ViGEmBusConnectivity $installedExe
+    }
+}
 if ($driverReady) {
-    Write-Host 'ViGEmBus driver: detected' -ForegroundColor Green
+    Write-Host 'ViGEmBus: READY - ViGEmClient connected successfully.' -ForegroundColor Green
 } else {
-    Write-Warning 'ViGEmBus could not be confirmed after installation/retry. The application will install, but virtual Xbox output may require a Windows restart or manual ViGEmBus installation.'
+    if ($driverPackageExit -eq 0) {
+        Write-Warning 'Driver installation returned success, but the bus connection is not ready yet. Restart Windows, then try again.'
+    } else {
+        Write-Warning 'ViGEmBus is not ready. Xbox output will not work until the driver is installed/repaired and connectivity succeeds.'
+    }
+    Write-Host 'Official manual driver installer: https://github.com/nefarius/ViGEmBus/releases/tag/v1.22.0' -ForegroundColor Yellow
 }
 
 # Desktop + Start Menu shortcuts. Resolve Windows special folders rather than constructing paths.
@@ -240,9 +264,9 @@ Get-ChildItem -LiteralPath $appDir -File -Force -ErrorAction SilentlyContinue | 
 }
 
 Write-Host ''
-Write-Host 'Installed successfully. Existing controller settings were preserved.' -ForegroundColor Green
+Write-Host 'GalacticRacerHOSAS application installed. Existing controller settings were preserved.' -ForegroundColor Green
 Write-Host "App folder: $appDir"
 if (-not $driverReady) {
-    Write-Host 'NOTE: ViGEmBus was not confirmed. Restart Windows first; if Initiate Xbox Controller still fails, install/repair ViGEmBus 1.22.0 manually.' -ForegroundColor Yellow
+    Write-Host 'Xbox controller NOT READY. Restart Windows, or install/repair ViGEmBus 1.22.0 manually using the official link above.' -ForegroundColor Yellow
 }
 Start-Process -FilePath $installedExe -WorkingDirectory $appDir

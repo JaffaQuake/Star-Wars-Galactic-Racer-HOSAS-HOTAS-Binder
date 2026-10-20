@@ -1,4 +1,70 @@
-GALACTIC RACER HOSAS / HOTAS BRIDGE — v2.1.7
+v2.2.3 OFFICIAL — RUDDER PEDALS MODE DROPDOWN LAYOUT FIX
+=========================================================
+- The Rudder Pedals Mode dropdown is moved left slightly, leaving a clear
+  gap before the Refresh devices button. The Mode label also has tighter
+  bounds so its text and dropdown do not collide.
+- This is a UI-only correction to v2.2.2 beta. Existing controller
+  behavior, five profiles, global profile cycling and Walking Mode 45–55%
+  throttle-neutral zone, saved settings, and driver setup are unchanged.
+- The app and installer are branded v2.2.3. Windows hardware and DPI
+  verification remains for users with the physical controllers/game.
+
+v2.2.2 BETA — GLOBAL PROFILE CYCLING AND WALKING THROTTLE DEADZONE
+===================================================================
+- New GLOBAL Cycle Profile Button (Learn/Clear) beneath Walking Toggle.
+  Physical button or POV hat advances to the next included numbered profile;
+  the cycle wraps from 5 to 1. Every fresh press advances only once.
+- Five checkboxes immediately below Profiles [1]-[5] choose which slots to
+  include in cycling. All are checked on first upgrade. Unchecking a slot
+  only skips cycling; its settings stay saved and it remains directly clickable.
+  If no slots are included, cycling does nothing.
+- Both clicking a different profile and cycling during play now send a neutral
+  Xbox report, release held keyboard keys, apply the new profile and continue
+  using the SAME virtual Xbox connection. Walking Mode resets OFF. Native
+  Windows gameplay and physical hardware verification are still needed.
+- Walking Mode: all throttle-style axes (HOTAT, Traditional HOTAS, and checked
+  HOSAS Throttle Axis) have a STATIONARY zone at 45-55% physical travel.
+  Below 45% = backwards, above 55% = forwards, with output scaled from zero
+  at each boundary to full movement at the axis end. This is independent of
+  racing Brake Behavior, brake zones, and curve midpoints. Spring-centered
+  HOSAS axes, Single Stick and independent wheel pedals retain their behavior.
+- The global assignment and checkbox flags are in hosas_profiles.json;
+  existing v2.2.1 profile snapshots migrate without losing assignments.
+- Cycling and walking help/tooltips explain these behaviors in the GUI.
+
+v2.2.1 BETA — FIVE SAVED CONFIGURATION PROFILES
+================================================
+A Profiles row above Control Mode offers five independent slots: [1] [2] [3] [4] [5].
+Profile 1 starts with your current configuration. Selecting an unused profile
+copies the current configuration once; afterwards changes to devices, mode,
+buttons and curves save independently to that slot. The selected slot stays
+pressed. Switching an active Xbox controller disconnects it for safety;
+re-initiate Xbox Controller after selecting the new profile.
+Configurations are saved in %LOCALAPPDATA%\GalacticRacerHOSAS\hosas_profiles.json.
+The original hosas_config.json still contains your active configuration.
+
+v2.2.0 BETA — WALKING MODE
+================================
+- Replaces the On-Foot Controls/WASD section with two fields: Walking Mode
+  ON/OFF software toggle and Walking Toggle Button Learn/Clear assignment.
+- Reuses existing physical inputs for walking movement/look across all five
+  control modes. HOTAT/HOTAS throttle axes use fixed physical 50% neutral;
+  wheel pedals use independently pressed accelerator/brake.
+- The walking toggle binding is saved, but active walking state is never
+  persisted and resets on virtual Xbox controller deactivation.
+- v2.1.9 HOTAT brake layout fix and installer preserved.
+- Refer to QUICKSTART.txt for mapping, limitations and operation.
+
+v2.2.0 beta CONTROL MODE QUICK REFERENCE
+==================================
+Five modes: Podracer Style (HOSAS), Podracer Style (HOTAT), Traditional HOTAS,
+Single Stick, and Driving Wheel. See QUICKSTART.txt for step-by-step setup.
+
+Input plots now represent RAW physical movement; vertical bars fill 0-100%.
+The green Drive / Steer graph remains processed output. Existing config is
+preserved by the installer. Xbox output requires an operational ViGEmBus driver.
+
+GALACTIC RACER HOSAS / HOTAS BRIDGE — v2.2.1 beta
 =================================================
 
 OFFICIAL v2.1.7 RELEASE
@@ -57,7 +123,7 @@ FEATURES
   common Additional Inputs, and the established HOSAS/HOTAS modes.
 - Additional Inputs: Centered supports Boost/Drift (negative X, positive A),
   Lever supports independent Boost or Drift. Digital action starts beyond deadzone.
-- On-Foot Thumbstick->WASD displays the saved thumbstick name and mapped axes.
+- Historical v2.1.x: On-Foot Thumbstick->WASD previously displayed the saved thumbstick name. In v2.2.0 beta this is replaced by Walking Mode.
 - Fix for disappearing Additional Input 1/2 text while device dropdowns open.
 - Preserves 10 Hz visual refresh, mapping rows, WinMM helper isolation,
   hover-help, existing user configs and installed app paths.

@@ -1,0 +1,55 @@
+GALACTIC RACER HOSAS / HOTAS BRIDGE — v2.2.3 OFFICIAL WINDOWS x64
+VALIDATION AND RELEASE NOTES (2026-10-20)
+============================================================
+
+SOURCE BASELINE
+- Built directly from GalacticRacerHOSAS-v2.2.2-beta-Windows.zip,
+  retaining its exact packaged Source/ baseline before targeted edits.
+- Only runtime source changes: Source/main.go title text, shortened
+  Rudder Pedals Mode label bounds, and Mode dropdown x-coordinate.
+- Original mode, control, walking, profile, bindings, input APIs, axis
+  calibration, installer logic, and configuration schema were not edited.
+- Source/walking_v220_source_test.go and wheel_v218_release_source_test.go
+  version guards were updated. New layout source regression test added.
+
+UI FIX
+- Previously: Rudder Mode combo x=665, width=170 => right edge=835;
+  Refresh devices begins x=830 (5 logical pixels of overlap).
+- Now: Mode label x=585 width=45; combo x=635 width=170 => end=805;
+  Refresh devices x=830 => 25 logical pixels clearance.
+- Preserves same dropdown ID, width, options, binding, y-coordinate,
+  group visibility, and conditional behavior across control modes.
+
+PASS — TESTS PERFORMED ON LINUX BUILD HOST
+- go test ./...
+- go test -race ./...
+- go vet ./...
+- GOOS=windows GOARCH=amd64 go test -exec /bin/true ./...
+  (Windows tests COMPILED only, NOT executed.)
+- GOOS=windows GOARCH=amd64 go build -ldflags='-H windowsgui'
+  (Windows x64 GUI EXE)
+- GOOS=windows GOARCH=amd64 go build ./WinMMHelper
+  (Windows x64 console helper EXE)
+- Source comparison against supplied v2.2.2 beta confirms no other
+  production Go source files changed besides Source/main.go.
+
+PRE-EXISTING WARNINGS
+- Windows-target go vet still reports four unsafe.Pointer warnings
+  in Source/main.go, at lines 972, 1010, 1014, 4260.
+- These warnings correspond to existing Windows/Win32 pointer code and
+  were not introduced by this UI positioning change.
+
+NOT TESTED ON REAL WINDOWS HARDWARE
+- UI at 100%, 125%, 150% display scaling including resized windows.
+- Real VKB/Virpil throttle/stick/pedals and DirectInput/WinMM behavior.
+- ViGEmBus/ViGEmClient installation and virtual controller connection.
+- Profile cycling during live gameplay, throttle Walking Mode, UEVR.
+- Please test the Rudder Pedals Mode/Refresh devices clearance in Windows
+  and ensure cycling/gameplay stay functional before broad distribution.
+
+INSTALL AND SETTINGS SAFETY
+- Extract whole ZIP; run Install.cmd as with v2.2.2.
+- Existing hosas_config.json and hosas_profiles.json should remain
+  untouched by installation, as installer/settings code is unchanged.
+- The archive includes both Windows executables, source and tests,
+  installer, historical validation reports, copyright and notices.

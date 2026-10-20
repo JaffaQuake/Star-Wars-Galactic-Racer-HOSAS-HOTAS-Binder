@@ -1,3 +1,89 @@
+## v2.2.3 — Official Windows x64 Release / Rudder Pedals Layout Fix
+
+- Based directly on v2.2.2 beta. Fixed the Rudder Pedals Mode dropdown
+  colliding with the Refresh devices button at the right of the input pane.
+  Moved the Mode combo 30 logical pixels left (x=665 to x=635) and reduced
+  the adjacent Mode label bound to avoid overlap; the dropdown now ends
+  25 logical pixels before Refresh devices begins.
+- UI-only source change aside from release branding. Preserves all five
+  racing modes, global profile cycling, five profile inclusion checkboxes,
+  seamless virtual Xbox profile switching, and the Walking Mode 45–55%
+  throttle neutral zone without changes to input/control mathematics,
+  mappings, calibration, or settings persistence.
+- Updated Windows app and installer branding to v2.2.3 official; refreshed
+  quickstart, README, developer notes, and the validation record.
+- Portable Go tests and Windows cross-build verification performed.
+  Native Windows DPI, real hardware, ViGEmBus, and in-game testing remain
+  necessary; "official" denotes release designation, not hardware certification.
+
+## v2.2.2 beta — Global Profile Cycling / Seamless Switching / Walking Neutral
+
+- Added a single GLOBAL physical cycle binding (button or POV) and five
+  inclusion checkboxes. Skipped profiles remain independently saved, selectable
+  and editable. Cycle wraps over checked profiles on new button presses.
+- Profile switching during active mapping sends neutral Xbox output and clears
+  held keyboard outputs, applies new mode/axes/bindings/curves and preserves the
+  virtual ViGEm/XInput target instead of disconnecting it. Walking resets OFF.
+- Throttle-style Walking Mode axes use a centered fixed 45-55% physical-travel
+  neutral band, with linearly scaled forward/reverse outside the band. Racing
+  brake thresholds and custom curve midpoints are not walking calibration.
+- Global cycle selection/assignment stored in hosas_profiles.json; existing
+  five-slot JSON migrates. Added tooltip guidance and regression tests.
+- Windows x64 executables cross-built. Native Windows GUI, hardware, driver,
+  profile cycling and UEVR/in-game validation remain outstanding.
+
+# v2.2.1 beta (Windows x64) — Five Independent Profiles
+
+- New Profiles row above Control Mode with compact 1 / 2 / 3 / 4 / 5 buttons. The selected slot is visibly pressed.
+- Each slot independently remembers a complete configuration: control mode, physical device and axis choices, inversion, throttle/braking preferences, Xbox button and Walking Mode toggle bindings, calibration/response curves, Input API and polling settings.
+- Upgrading automatically puts the existing configuration into Profile 1. Selecting an unused slot copies the currently active settings ONCE; future edits remain independent. Selecting a previously configured slot restores its own complete setup.
+- Saved profiles survive restarts in `%LOCALAPPDATA%\GalacticRacerHOSAS\hosas_profiles.json`. Active settings continue to be written to the original `hosas_config.json` for backward compatibility. No existing settings or personal files are deleted.
+- Profile switching while an Xbox controller is active disconnects the virtual controller and resets Walking Mode. User then clicks Initiate Xbox Controller to restart with the chosen configuration. A switch is prevented while controller initiation is still in progress.
+- Preserves v2.2.0 racing/walking math, the HOTAT Brake Behavior layout, and existing installer logic.
+- Native Windows/DPI visual testing and real controller hardware validation remain required.
+
+---
+
+# v2.2.0 beta (Windows x64) — Walking Mode
+
+- Removed the previous On-Foot Controls/WASD configuration panel from the UI.
+- Added a visible Walking Mode ON/OFF checkbox and physical button/hat Learn/Clear binding.
+- Walking uses configured hardware with per-mode virtual Xbox stick outputs:
+  HOSAS full left-stick movement/right-stick look; HOTAT average throttle to movement and differential throttle to camera yaw; HOTAS throttle movement and joystick camera; Single Stick vertical movement and horizontal camera; Driving Wheel pedals movement and wheel camera.
+- Fixed 50% signed neutral for throttle-style axes, independent of the racing brake modes, response curves and steering/thrust processing. Wheel pedals remain independent one-way controls.
+- Physical toggle fires once per fresh press and is reserved from ordinary Xbox button bindings.
+- Active walking state resets when the virtual Xbox controller is stopped or restarted; only the binding persists.
+- Walking suppresses racing-specific trigger, pitch, pedal, and twist outputs while keeping ordinary learned Xbox game buttons available.
+- Retains all five racing modes, installer reliability improvements, and the HOTAT brake row UI fix from v2.1.9 beta.
+- Native Windows layout, ViGEmBus, physical joystick/wheel hardware and in-game VR behavior require user verification.
+
+---
+
+# v2.1.9 beta (Windows x64) — HOTAT Layout Hotfix
+
+- Moved the Podracer Style (HOTAT) Brake behavior selector onto its own row beneath Left Input and Right Input, immediately above Additional Analogue Inputs.
+- Moved contextual Idle % / Zone % labels and value fields onto the same row. All HOTAT braking options and persisted percentages are unchanged.
+- Removed overlap with Control Mode, Input API, and their native dropdowns.
+- No changes to controller processing, physical input sampling, calibration, virtual Xbox output, installer driver logic, or saved configuration schema.
+- Walking Mode is **not** included; it is planned for v2.2.0 beta.
+- Requires native Windows layout/DPI and hardware verification.
+
+---
+
+# v2.1.8 (Windows x64) - New control modes and setup reliability
+
+- Renamed existing Podracer Style to Podracer Style (HOSAS); legacy HOSAS keys remain valid.
+- Added dual-throttle Podracer Style (HOTAT), with a single Off / Digital at Idle / Analog Brake Zone selector shared by both levers; separate saved HOTAT thresholds/zone.
+- Added Single Stick (one centered X/Y joystick, forward RT/back LT, conventional X steering). Reuses the existing stick assignments.
+- Added Centered Stick brake option to Traditional HOTAS, with fixed 50% analog braking and an automatically centered-plot throttle monitor. Analog Brake Zone retains its independently saved percentage.
+- Raw physical-input visualizations: centered X/Y plots and vertical 0-100% bars; wheel pedals get separate raw bar indicators, wheel steering remains its raw plot. Drive/Steer still depicts processed output.
+- Installer now requests administrator approval only for driver setup, checks actual ViGEmClient-to-ViGEmBus connection, distinguishes application installation from Xbox readiness, and provides an official manual fallback link.
+- QUICKSTART.txt now has detailed instructions for all five control modes.
+- Old HOSAS settings, WinMM helper, saved axis tuning and controller bindings remain supported.
+- Windows device testing, installer UAC flow and DPI visual verification require native Windows hardware.
+
+---
+
 # GalacticRacerHOSAS — Changelog
 
 This consolidated changelog supersedes individually installed `RELEASE_NOTES_v*.txt` files.

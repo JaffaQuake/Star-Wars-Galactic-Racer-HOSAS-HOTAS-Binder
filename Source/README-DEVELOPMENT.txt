@@ -1,3 +1,65 @@
+v2.2.3 OFFICIAL — RUDDER PEDALS MODE DROPDOWN LAYOUT FIX
+=========================================================
+Source baseline: packaged v2.2.2 beta ZIP. In main.go createUI, the Rudder
+Pedals Mode label bounds shrink from width 80 to 45, and the idPedalMode
+combo moves from x=665 to x=635 (same 170 width), leaving 25 logical px
+between the combo's right edge and Refresh devices at x=830. No input
+processing, bindings, config schema, Walking Mode math, or profiles code
+changed. Windows app/installer branding and docs were updated; all historical
+beta notes below remain historical. Run portable tests and Windows x64
+cross-build. Native DPI/device/in-game validation is still necessary.
+
+v2.2.2 BETA — GLOBAL PROFILE CYCLING AND WALKING THROTTLE DEADZONE
+===================================================================
+- New GLOBAL Cycle Profile Button (Learn/Clear) beneath Walking Toggle.
+  Physical button or POV hat advances to the next included numbered profile;
+  the cycle wraps from 5 to 1. Every fresh press advances only once.
+- Five checkboxes immediately below Profiles [1]-[5] choose which slots to
+  include in cycling. All are checked on first upgrade. Unchecking a slot
+  only skips cycling; its settings stay saved and it remains directly clickable.
+  If no slots are included, cycling does nothing.
+- Both clicking a different profile and cycling during play now send a neutral
+  Xbox report, release held keyboard keys, apply the new profile and continue
+  using the SAME virtual Xbox connection. Walking Mode resets OFF. Native
+  Windows gameplay and physical hardware verification are still needed.
+- Walking Mode: all throttle-style axes (HOTAT, Traditional HOTAS, and checked
+  HOSAS Throttle Axis) have a STATIONARY zone at 45-55% physical travel.
+  Below 45% = backwards, above 55% = forwards, with output scaled from zero
+  at each boundary to full movement at the axis end. This is independent of
+  racing Brake Behavior, brake zones, and curve midpoints. Spring-centered
+  HOSAS axes, Single Stick and independent wheel pedals retain their behavior.
+- The global assignment and checkbox flags are in hosas_profiles.json;
+  existing v2.2.1 profile snapshots migrate without losing assignments.
+- Cycling and walking help/tooltips explain these behaviors in the GUI.
+
+v2.2.1 beta introduces five independent saved profile slots. See
+profiles_windows.go for the full config snapshot/store implementation.
+The original hosas_config.json remains backward compatible and always
+contains active settings; hosas_profiles.json stores all five slot snapshots.
+Do not change racing/walking controller math or remove WinMM isolation.
+
+v2.2.0 beta adds Walking Mode (read QUICKSTART.txt). The new pure
+walking_mode_math.go handles five virtual Xbox left/right stick layouts,
+while the Win32 main.go polls existing configured devices and uses the
+existing WinMM/DirectInput button-learning system. Do not remove legacy
+config keys or revert the isolated WinMM helper behavior.
+
+v2.1.9 BETA — HOTAT UI HOTFIX
+================================
+Based directly on packaged v2.1.8 Windows release. Move the HOTAT brake mode
+and conditional Idle/Zone fields to y=140–165 beneath the two input rows.
+Only main.go display coordinates and version metadata changed; no controller
+math, configurations, monitoring or installer processing changed. Walking
+Mode remains deferred to v2.2.0 beta. Native Windows GUI/DPI validation remains.
+
+v2.1.8 OFFICIAL DEVELOPMENT NOTES
+=================================
+Five modes: HOSAS, HOTAT, Traditional HOTAS, Single Stick, Driving Wheel.
+Raw physical monitors now differ from processed Drive / Steer output. Modes,
+braking preferences and assignments persist; legacy v2.1.7 JSON is supported.
+See QUICKSTART.txt, CHANGELOG.md and VALIDATION_v2.1.8.txt for new behavior,
+installer details and the native Windows hardware verification limitation.
+
 v2.1.7 OFFICIAL RELEASE NOTES
 ==============================
 Based directly on the user-supplied v2.1.6 beta source and Windows ZIP.

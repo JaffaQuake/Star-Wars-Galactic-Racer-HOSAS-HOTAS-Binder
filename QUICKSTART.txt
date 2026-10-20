@@ -1,85 +1,171 @@
-GALACTIC RACER HOSAS / HOTAS BRIDGE — v2.1.7 QUICKSTART
-=============================================================
-1. Unzip all files, run Install.cmd on Windows x64.
-2. Choose Podracer Style, Traditional HOTAS, or Driving Wheel.
-3. Driving Wheel: select Wheel device/axis, invert as needed, or click Detect
-   and TURN WHEEL RIGHT. Steering is centered -100..+100%.
-4. Pedal 1 (Throttle) and Pedal 2 (Brake) are separate one-way 0..100% levers.
-   For each, select device and axis, invert if needed, or press its Detect button.
-   Pedal 1 outputs Xbox Right Trigger; Pedal 2 outputs Xbox Left Trigger.
-5. Optional Pedal 3 (Clutch) has independent device/axis/invert/Detect and
-   Off/Boost/Drift. Boost outputs Xbox A, Drift Xbox X, full digital press.
-6. The Rudder Pedals section becomes Hand Brake in Driving Wheel mode;
-   the Rudder Pedals-only "Pedal device" caption is hidden in that mode.
-   Use an analog 0..100% lever with device/axis/invert and Detect, OR
-   check Button then click Learn Btn and operate your digital handbrake.
-   The Hand Brake Mode dropdown offers Boost or Drift only.
-7. Open the Input Curves/Axis Tuning tab to calibrate per-input deadzones,
-   curves and saturation. Changes take effect immediately and save automatically;
-   Reset This Axis restores defaults.
-   Wheel pedals and handbrake have dedicated tuning profiles. A post-deadzone
-   nonzero Boost/Drift signal sends a full button press.
-8. Additional Analogue Inputs in Centered mode: Boost/Drift maps negative
-   to Drift (X), positive to Boost (A). Invert swaps directions. In Lever
-   mode: separate Boost and Drift selections are available.
-9. In On-Foot Controls choose Thumbstick -> WASD and Detect Thumbstick.
-   The saved assignment is shown below the DirectInput monitor after restart.
-10. Select Initiate Xbox Controller; in Galactic Racer set the in-game controller scheme to Default. You can still click Save settings for manual settings changes.
-11. Do not use two modes simultaneously: changing mode retains each mode's
-    settings independently. Keep existing configuration file between updates.
+GALACTIC RACER HOSAS / HOTAS BRIDGE - v2.2.3 OFFICIAL QUICK START
+======================================================
+Windows x64. This release supports FIVE control modes. Select ONE mode at a time;
+switching modes preserves the other mode's assignments and axis tuning.
 
-The Driver/ViGEm and WinMM restrictions from v2.0.6 remain applicable.
-Native Windows visual, actual controller, and 125%/150% DPI checks are pending.
+INSTALL / FIRST RUN
+-------------------
+1. Extract the entire ZIP to a folder. Run Install.cmd (do not run from inside ZIP).
+2. Approve the administrator prompt ONLY if ViGEmBus driver installation is
+   needed. The installed application itself runs with normal user privileges.
+3. Look for "ViGEmBus: READY" in the installer output. If the driver is not
+   ready, restart Windows and run Install.cmd again, or use the official driver:
+   https://github.com/nefarius/ViGEmBus/releases/tag/v1.22.0
+4. Open the app, select Input API (Auto recommended), select Control Mode,
+   assign your physical devices and axes, and observe Live Input Monitor.
+5. Click "Initiate Xbox Controller". In Galactic Racer, use the Default
+   controller scheme. Click "Save settings" to save manually, if desired.
 
-UI: The right pane has Mappings (default on launch) and Input Curves/Axis Tuning tabs. Polling Rate and (Podracer only) Hybrid Preserve Thrust are at the top of Calibration. Switching modes retains the selected tab until next launch.
+CONTROL MODES
+-------------
+1. PODRACER STYLE (HOSAS) - TWO CENTERED STICKS
+   a. Choose "Podracer Style (HOSAS)".
+   b. Pick Left Input and Right Input devices, then the forward/backward axis
+      of each. Use Detect Left/Right if you need help identifying an axis.
+   c. Keep "Throttle axis" unchecked for spring-centered flight sticks. Check
+      it for a physical throttle-style axis that should be interpreted as
+      0%=backward, 50%=neutral, 100%=forward (legacy behavior retained).
+   d. Both sticks forward = thrust; a difference between them = steering.
+      Both sticks back = braking/reverse. Check the Drive / Steer monitor.
+   e. Input plots are raw X/Y, or 0-100% vertical bars for throttle axes.
+      Hybrid Preserve Thrust is under Input Curves / Axis Tuning.
 
-VISUAL UPDATE v2.1.0 (retained): Main window #D4D4D4 (Option A), transparent label
-backgrounds in both tabs, red/blue/green monitor dots with full black rings.
+2. PODRACER STYLE (HOTAT) - TWO THROTTLE LEVERS
+   a. Choose "Podracer Style (HOTAT)".
+   b. Pick Left Input and Right Input throttle devices and their lever axes.
+   c. Pick the single shared Brake behavior dropdown. It affects BOTH levers:
+      - Off (default): 0% travel = no thrust, 100% = full forward.
+      - Digital at Idle: full braking at/below Idle %; higher travel accelerates.
+      - Analog Brake Zone: lower Zone % gives proportional LT braking, and
+        the remaining travel is rescaled for forward thrust.
+   d. Both throttle levers feed the Podracer differential thrust/steer mixer.
+      The output can vary with Hybrid Preserve Thrust, as in HOSAS.
+   e. Both monitor bars show RAW physical travel (0% bottom, 100% top).
+      Invert affects controls but never reverses the raw monitor.
 
-CALIBRATION UPDATE v2.1.1:
-- Polling Rate: native Windows dropdown, offering 100/200/250/500/1000 Hz.
-  Select your rate and check that it remains selected after a restart.
-- Input to Configure: only assigned, enabled inputs appear. Physically digital
-  buttons are not analog calibration entries.
-- Boost/Drift and other digital-output axes show Deadzone only; their saved
-  curve and full-output values are retained for future analog-mode use.
-- For analog axes, tick Live Input to drive the Test Travel marker with real
-  physical movement. Uncheck to return to the manual Test Travel slider.
-- Live Input preview never changes input mappings or controller output values;
-  curve/deadzone sliders still auto-apply and save independently.
+3. TRADITIONAL HOTAS - SEPARATE THROTTLE AND STEERING STICK
+   a. Choose "Traditional HOTAS".
+   b. Select Throttle device and its forward/backward axis.
+   c. Select Stick device and the separate X (steer) and Y axes.
+   d. Pick Throttle Brake behavior:
+      - Off: forward-only throttle.
+      - Digital at Idle: full LT brake below Idle %.
+      - Analog Brake Zone: proportional LT brake in the configurable Zone %.
+      - Centered Stick: FIXED 50% analog brake split; backward = LT,
+        centered = neutral, forward = RT. Use this for a spring-centered
+        joystick used AS the throttle, including two-stick traditional control.
+   e. The throttle input shows a 0-100% raw bar, except Centered Stick shows
+      the raw centered-stick plot. Steering Stick always shows raw X/Y.
+      The Drive / Steer plot shows processed output.
 
-DROPDOWN UPDATE v2.1.2:
-- All main-window selectors now use native Windows dropdowns, including
-  mode, device, axis, pedal/auxiliary and keyboard choices.
-- Selected values and device GUIDs continue saving to existing hosas_config.json.
-- Native popup lists may not be visible in window-only screen recordings.
-- Full release history is consolidated in CHANGELOG.md. Installer keeps your
-  controller configuration and clears only known old generated release reports.
+4. SINGLE STICK - ONE SPRING-CENTERED JOYSTICK
+   a. Choose "Single Stick".
+   b. Choose ONE physical device on the Single Stick row.
+   c. Assign its X axis to steering and Y axis to acceleration/braking.
+   d. Push Y forward = Xbox Right Trigger; pull Y back = Xbox Left Trigger;
+      release Y = neutral. Move X sideways = conventional steering.
+   e. Use Invert X/Y if needed. The raw X/Y monitor is NOT inverted, even
+      when the Xbox output is inverted.
+   f. The selector shares stored Stick X/Y assignments with Traditional HOTAS.
+      If you switch between these modes, verify the assignments.
 
-TWO-STAGE CURVES v2.1.3:
-- Under Input Curves/Axis Tuning choose an active analog-output axis.
-- Response Curve 0.20–3.00 controls strength. Weighting 0–100 shifts the arc.
-- Optional Two Stage Curve adds independent Curve 2 and stage weighting.
-- Midpoint Position 50% is the starting diagonal position. Custom Midpoint
-  reveals independently adjustable X and Y (preset selector removed).
-- Full Output Point remains global. Changes save automatically.
-- Existing non-linear curves retain original output when upgrading, until
-  you change their Weighting. Full Output Point is not an output cap.
+5. DRIVING WHEEL - WHEEL AND SEPARATE PEDALS
+   a. Choose "Driving Wheel". Set wheel device and steering axis, or Detect
+      by turning the wheel RIGHT. Invert if direction is reversed.
+   b. Set Pedal 1 (Throttle) and Pedal 2 (Brake), or Detect by pressing each.
+      Independent pedals map to Xbox RT and LT respectively.
+   c. Optional Pedal 3 (Clutch) supports Off / Boost (A) / Drift (X).
+   d. The shared Rudder Pedals area becomes Hand Brake. Choose analog device
+      and axis, OR check Button and Learn Btn for a digital handbrake.
+   e. Left monitor shows TWO independent RAW 0-100% bars, one per pedal;
+      right monitor shows RAW wheel steering X; Drive / Steer is processed.
 
+FIVE INDEPENDENT CONFIGURATION PROFILES
+---------------------------------------
+A Profiles row appears above Control Mode. Press 1, 2, 3, 4 or 5 to switch
+between independent complete configurations. The currently active button
+stays selected. Each profile remembers its control mode, device and axis
+assignments, inversion, braking preferences, button bindings, and tuning.
 
-v2.1.4 calibration update: In Two Stage mode, normal Midpoint Position is now
-a 10–90% slider with a live percentage readout. Enabling Custom Midpoint
-hides the diagonal slider and (in v2.1.4) showed midpoint presets
-alongside independent X Input / Y Output sliders. Presets are removed in v2.1.5. Calibration saves automatically;
-curve calculations and saved configuration keys are unchanged.
+On the first launch with profiles (v2.2.1 or newer), Profile 1 inherits your previous settings.
+The first time you click an unused slot it copies your current setup; after
+that, edits save to that slot only. Switching back restores the prior setup.
+Changes auto-save as before; Save Settings also saves the active profile.
+Profiles are stored in:
+  %LOCALAPPDATA%\GalacticRacerHOSAS\hosas_profiles.json
+Active settings are still saved to hosas_config.json for older versions.
 
+NEW in v2.2.2: checkboxes below profile buttons 1-5 choose which slots are
+INCLUDED in cycling (all checked at upgrade). Unchecked slots remain saved
+and manually selectable. Under Walking Toggle, learn a GLOBAL Cycle Profile
+Button; each fresh press cycles to the next checked slot in order, wrapping
+after 5. Cycle button mapping and checkboxes are shared by all profiles and
+saved in hosas_profiles.json. With no boxes checked, the cycle button does nothing.
 
-v2.1.5 calibration layout: Curve 1 and Curve 2 appear above Midpoint.
-Click Custom Midpoint to replace the diagonal midpoint slider with X and Y
-sliders in the same area, without leaving an empty row. Midpoint presets
-were removed. Auto-save and curve behavior are unchanged.
+Profile switching now keeps the virtual Xbox controller CONNECTED when active.
+It sends a neutral report, releases held keyboard keys and rebinds the newly
+selected profile. Walking Mode resets OFF; the Walking Toggle button remains
+saved per profile. First test switching in a safe area, not mid-race.
 
+INPUT MONITORS AND AXIS TUNING
+-----------------------------
+The left/right input monitors always show normalized RAW PHYSICAL position,
+BEFORE inversion, deadzones, response curves or braking/mixing calculations.
+Centered plots show -1 to +1. Vertical bars show 0 to 100% (TOP = 100%).
+The green Drive / Steer plot, by contrast, shows PROCESSED game output.
+If mapping is active, live visual updates are paused unless "Monitor during
+gameplay" is checked. This setting affects the GUI only, not Xbox polling.
 
-v2.1.6: Find Full Output Point immediately beneath Deadzone in Axis Tuning.
-Two Stage mode lists Curve 1, Curve 2, then Custom Midpoint and its sliders,
-with no extra Midpoint heading. All edits apply automatically.
+Input Curves / Axis Tuning contains the per-axis Deadzone, Full Output Point,
+Single / Two Stage response shaping and the optional live Test Travel preview.
+Calibration settings auto-save. The original HOSAS per-side input profiles
+remain deadzone-only; the combined thrust/steer curves are independent.
+
+Additional Analogue Inputs, Rudder Pedals, and learned gamepad buttons remain
+available for racing. Walking Mode replaces the former On-Foot WASD section.
+
+WALKING MODE — IN-HEADSET CONTROLLER SWITCHING
+---------------------------------------------
+The Walking Mode section has TWO fields:
+1. Walking Mode: ON/OFF. Click the checkbox to switch between walking and
+   racing while the virtual Xbox controller is active.
+2. Walking Toggle Button: click Learn, then press a physical controller
+   button/hat. Press once to enable walking, and again to return to racing.
+   Click Clear to remove the assignment. The assigned button is reserved:
+   it will no longer send an in-game Xbox button press if also mapped there.
+
+Walking Mode uses your EXISTING physical device and axis assignments; no extra
+axis calibration, profiles or controller devices are required.
+  - Podracer HOSAS: left joystick X/Y = walk/strafe; right joystick X/Y = look.
+  - Podracer HOTAT: average signed throttle = forward/back on Xbox Left Stick Y;
+    throttle differential = horizontal look on Xbox Right Stick X.
+  - Traditional HOTAS: throttle = forward/back, steering stick X/Y = look.
+  - Single Stick: joystick Y = forward/back; X = horizontal look; no strafe.
+  - Driving Wheel: throttle/brake pedals = forward/back; wheel = horizontal look.
+All throttle-style Walking Mode axes (HOTAT, Traditional HOTAS and HOSAS axes
+with Throttle Axis checked) have a FIXED 45-55% PHYSICAL TRAVEL DEADZONE:
+   0-45% = BACKWARD; 45-55% = STAND STILL; 55-100% = FORWARD.
+The backward and forward portions scale smoothly from zero at the neutral
+boundaries to full movement at the ends of travel. This is INDEPENDENT of
+racing Brake Behavior (including Digital at Idle, Off, Analog Brake Zone,
+Centered Stick), brake percentages, response-curve custom midpoints or Hybrid.
+Spring-centered HOSAS/Single Stick axes retain their original walking maps.
+Wheel pedals are different: both released = neutral.
+Place throttle levers between 45% and 55% before enabling walking.
+
+Deactivating the virtual Xbox controller always returns Walking Mode to OFF;
+reactivating always begins in racing mode. Only the button assignment is saved.
+The green output monitor shows movement output while walking, and the live
+Walking ON/OFF control stays visible even if gameplay monitoring is paused.
+
+UPDATING AND TROUBLESHOOTING
+----------------------------
+Your saved %LOCALAPPDATA%\GalacticRacerHOSAS\hosas_config.json is NEVER
+replaced by Install.cmd. Keep it if you reinstall or upgrade from v2.1.7.
+A functioning driver name is not sufficient: the v2.2.0 beta installer checks
+an actual ViGEmClient-to-ViGEmBus connection. If "Xbox NOT READY" appears,
+restart Windows first, then use the official driver installer linked above.
+If buttons are missing from a particular device, try DirectInput rather than
+WinMM. WinMM enumeration is isolated in a separate helper process.
+
+Windows hardware verification and real-DPI layout testing are recommended.

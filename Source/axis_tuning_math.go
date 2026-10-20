@@ -89,7 +89,10 @@ func axisTuneEntriesForControlMode(mode string) []axisTuneEntry {
 		hosas := entry.Key == profileHOSASLeft || entry.Key == profileHOSASRight || entry.Key == profileHOSASThrust || entry.Key == profileHOSASSteer
 		hotas := entry.Key == profileHOTASX || entry.Key == profileHOTASY || entry.Key == profileHOTASThrottle
 		wheel := entry.Key == profileWheelSteering || entry.Key == profileWheelPedal1 || entry.Key == profileWheelPedal2 || entry.Key == profileWheelPedal3 || entry.Key == profileWheelHandbrake
-		if hosas && mode != "HOSAS" || hotas && mode != "HOTAS" || wheel && mode != "WHEEL" {
+		if hosas && mode != "HOSAS" && mode != "HOTAT" || hotas && mode != "HOTAS" && mode != "SINGLE" || wheel && mode != "WHEEL" {
+			continue
+		}
+		if entry.Key == profileHOTASThrottle && mode == "SINGLE" {
 			continue
 		}
 		if entry.Key == profilePedal && mode == "WHEEL" {
