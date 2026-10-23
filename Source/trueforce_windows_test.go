@@ -50,6 +50,26 @@ func TestTFSpringPushesTowardCentre(t *testing.T) {
 	}
 }
 
+func TestTFRunawayOnlyWhenPushedOutAtLock(t *testing.T) {
+	// Driver holding full lock while the spring pulls back is normal driving.
+	if tfRunaway(-0.99, tfSpring(-0.99, 0, 35)) || tfRunaway(0.99, tfSpring(0.99, 0, 35)) {
+		t.Fatal("held at lock against the spring must not trip")
+	}
+	if !tfRunaway(-0.99, -0.3) || !tfRunaway(0.99, 0.3) {
+		t.Fatal("force pushing further into lock must trip")
+	}
+	if tfRunaway(-0.5, -0.3) {
+		t.Fatal("away from lock must not trip")
+	}
+}
+
+func TestTFSpringDampingBounded(t *testing.T) {
+	// A poll-timing glitch can report absurd speed; damping must not kick the rim.
+	if f := tfSpring(0, 500, 35); math.Abs(f) > 0.1 {
+		t.Fatalf("damping kick %.2f", f)
+	}
+}
+
 func TestTFDecimatorBand(t *testing.T) {
 	rms := func(hz float64) float64 {
 		d := newTFDecimator(48000)

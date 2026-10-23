@@ -19,7 +19,11 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"io"
+	"log"
 	"math"
+	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -36,6 +40,7 @@ const (
 	tfMaxTexture   = 0.35 // above ~0.5 FS texture turns into steering pull (protocol notes)
 	tfAudioGain    = 2.0  // ponytail: fixed audio->texture gain; wheel_audio_strength is the knob
 	tfDamping      = 0.03 // force per (full axis range / s); keeps the 1 kHz spring from ringing
+	tfMaxDamp      = 0.08 // log showed velocity glitches driving damping to the 0.8 cap
 	tfStalePos     = 100 * time.Millisecond
 	tfLockGuardPos = 0.97 // |pos| treated as "at lock" by the runaway guard
 	tfLockGuardFor = 400 * time.Millisecond
@@ -91,8 +96,16 @@ func buildTFPacket(pkt *[64]byte, seq byte, cur uint16, window *[tfWindowSlots]u
 // tfSpring is the centering force for a wheel at pos (-1..1 of its full DI
 // range, negative = left) moving at vel (range/s): it pushes back toward
 // centre like the DirectInput spring it replaces (coefficient = centerPct).
+// The damping term is capped: speed comes from poll-rate position samples,
+// and a timing glitch there must not turn into a kick at the rim.
 func tfSpring(pos, vel float64, centerPct int) float64 {
-	return -float64(centerPct)/100*pos - tfDamping*vel
+	return -float64(centerPct)/100*pos - math.Max(-tfMaxDamp, math.Min(tfMaxDamp, tfDamping*vel))
+}
+
+// tfRunaway: at lock with our own force pushing further into it. Holding
+// lock against the spring is just driving.
+func tfRunaway(pos, cur float64) bool {
+	return math.Abs(pos) > tfLockGuardPos && pos*cur > 0
 }
 
 // tfDecimator turns the 48 kHz capture into 4 kHz texture: band-pass about
@@ -269,7 +282,21 @@ func (s *tfStreamer) run(stop <-chan struct{}, done chan<- struct{}) {
 	}
 }
 
-func (s *tfStreamer) stream(stop <-chan struct{}) error {
+// openTFLog appends to trueforce.log next to the config, for diagnosing
+// sessions on real hardware (one stats line per second).
+func openTFLog() (*log.Logger, func()) {
+	f, err := os.OpenFile(filepath.Join(filepath.Dir(configPath()), "trueforce.log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return log.New(io.Discard, "", 0), func() {}
+	}
+	return log.New(f, "", log.Ldate|log.Lmicroseconds), func() { f.Close() }
+}
+
+func (s *tfStreamer) stream(stop <-chan struct{}) (err error) {
+	lg, closeLog := openTFLog()
+	defer closeLog()
+	lg.Printf("---- session start")
+	defer func() { lg.Printf("session end: %v", err) }()
 	path := findTrueforceDevice()
 	if path == "" {
 		return fmt.Errorf("Trueforce interface not found (wheel in PC mode? open G HUB once, then close it)")
@@ -282,14 +309,43 @@ func (s *tfStreamer) stream(stop <-chan struct{}) error {
 	procTimeBeginPeriod.Call(1)
 	defer procTimeEndPeriod.Call(1)
 
+	// Wheel replies on a second handle (reads and writes on one synchronous
+	// handle would serialize). A healthy session answers at ~1 kHz; replies
+	// stopping or changing status shows the wheel ended it, not us.
+	var inReports atomic.Int64
+	if rh, _, _ := procCreateFileW.Call(uintptr(unsafe.Pointer(utf16ptr(path))), GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, 0, OPEN_EXISTING, 0, 0); rh != 0 && rh != ^uintptr(0) {
+		defer func() { procCancelIoEx.Call(rh, 0); procCloseHandle.Call(rh) }()
+		go func() {
+			buf := make([]byte, 1024)
+			var last [2]byte
+			for {
+				var n uint32
+				if r, _, e := procReadFile.Call(rh, uintptr(unsafe.Pointer(&buf[0])), uintptr(len(buf)), uintptr(unsafe.Pointer(&n)), 0); r == 0 || n == 0 {
+					lg.Printf("reply reader stopped: %v", e)
+					return
+				}
+				inReports.Add(int64(n+63) / 64)
+				if n >= 9 && (buf[4] != last[0] || buf[8] != last[1]) {
+					last = [2]byte{buf[4], buf[8]}
+					lg.Printf("wheel reply type %02x status %02x: % x", buf[4], buf[8], buf[:min(int(n), 32)])
+				}
+			}
+		}()
+	} else {
+		lg.Printf("could not open reply reader")
+	}
+
 	var pkt [64]byte
 	var seq byte
+	var writeMax time.Duration
 	write := func() error {
 		var n uint32
+		t0 := time.Now()
 		// ponytail: synchronous write; a wheel that stops reading would block Stop. Overlapped I/O if that ever happens.
 		if ok, _, e := procWriteFile.Call(h, uintptr(unsafe.Pointer(&pkt[0])), 64, uintptr(unsafe.Pointer(&n)), 0); ok == 0 || n != 64 {
 			return fmt.Errorf("Trueforce write failed: %v", e)
 		}
+		writeMax = max(writeMax, time.Since(t0))
 		return nil
 	}
 	for pass := 0; pass < 2; pass++ {
@@ -307,6 +363,7 @@ func (s *tfStreamer) stream(stop <-chan struct{}) error {
 		}
 	}
 
+	lg.Printf("init sent (%d packets)", 2*len(tfInitPackets))
 	tfAudio.reset()
 	tfAudioWant.Store(true)
 	defer tfAudioWant.Store(false)
@@ -334,6 +391,10 @@ func (s *tfStreamer) stream(stop <-chan struct{}) error {
 	var lastPosAt int64
 	var vel float64
 	var atLockSince time.Time
+	var statPkts, statSamples int
+	var statCur, statTex float64
+	var statIn int64
+	statAt := start
 	for {
 		select {
 		case <-stop:
@@ -355,22 +416,23 @@ func (s *tfStreamer) stream(stop <-chan struct{}) error {
 		if fresh {
 			cur = tfSpring(pos, vel, int(tfCenterPct.Load()))
 		}
-		// Runaway guard: pinned at lock for a while means something is fighting the user, stop.
-		if math.Abs(pos) > tfLockGuardPos && fresh {
-			if atLockSince.IsZero() {
-				atLockSince = now
-			} else if now.Sub(atLockSince) > tfLockGuardFor {
-				return fmt.Errorf("Trueforce stopped: wheel held at full lock (safety guard). Toggle Trueforce to retry")
-			}
-		} else {
-			atLockSince = time.Time{}
-		}
 		// Game rumble stays in cur, at the same frequencies as the DirectInput effects.
 		t := float64(ticks) / 1000
 		rp := float64(tfRumblePct.Load()) / 100
 		cur += float64(rumbleLarge.Load()) / 255 * rp * math.Sin(2*math.Pi*1e6/float64(wheelSinePeriodsUs[0])*t)
 		cur += float64(rumbleSmall.Load()) / 255 * rp * math.Sin(2*math.Pi*1e6/float64(wheelSinePeriodsUs[1])*t)
 		cur = math.Max(-tfMaxCur, math.Min(tfMaxCur, cur))
+		// Runaway guard: our force holding the wheel into lock for a while means
+		// the direction is wrong somewhere, stop. (Rumble alone alternates sign.)
+		if fresh && tfRunaway(pos, cur) {
+			if atLockSince.IsZero() {
+				atLockSince = now
+			} else if now.Sub(atLockSince) > tfLockGuardFor {
+				return fmt.Errorf("Trueforce stopped: force pushing the wheel into full lock (safety guard). Toggle Trueforce to retry")
+			}
+		} else {
+			atLockSince = time.Time{}
+		}
 
 		// Audio texture: as many samples as real time says are due.
 		due := int(now.Sub(start).Seconds()*tfSampleRate) - sent
@@ -385,6 +447,7 @@ func (s *tfStreamer) stream(stop <-chan struct{}) error {
 			silent := true
 			for _, v := range samples {
 				x := math.Max(-tfMaxTexture, math.Min(tfMaxTexture, v*gain))
+				statTex = max(statTex, math.Abs(x))
 				copy(window[:], window[1:])
 				window[tfWindowSlots-1] = tfU16(x)
 				silent = silent && window[tfWindowSlots-1] == 0x8000
@@ -399,6 +462,15 @@ func (s *tfStreamer) stream(stop <-chan struct{}) error {
 		ticks++
 		if err := write(); err != nil {
 			return err
+		}
+		statPkts++
+		statSamples += n
+		statCur = max(statCur, math.Abs(cur))
+		if now.Sub(statAt) >= time.Second {
+			in := inReports.Load()
+			lg.Printf("pkts %d samples %d replies %d maxwrite %v peak cur %.2f tex %.2f rumble %d/%d pos %.2f fresh %v",
+				statPkts, statSamples, in-statIn, writeMax, statCur, statTex, rumbleLarge.Load(), rumbleSmall.Load(), pos, fresh)
+			statPkts, statSamples, statCur, statTex, statIn, writeMax, statAt = 0, 0, 0, 0, in, 0, now
 		}
 		// Pace to ~1 kHz; the due-sample count above absorbs timer jitter.
 		if d := time.Until(start.Add(time.Duration(ticks) * time.Millisecond)); d > 0 {

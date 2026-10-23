@@ -3285,14 +3285,16 @@ func (a *appState) pollLoop() {
 			rumblePct := ffbPercent(c.WheelRumbleStrength, defaultWheelRumbleStrength)
 			audioPct := ffbPercent(c.WheelAudioStrength, defaultWheelAudioStrength)
 			centerPct := ffbPercent(c.WheelCenteringStrength, defaultWheelCenteringStrength)
+			tfCenterPct.Store(int32(centerPct))
+			tfRumblePct.Store(int32(rumblePct))
+			tfAudioPct.Store(int32(audioPct))
+			// Before UpdateWheelFFB: ending a Trueforce session clears the wheel's
+			// effects, so it must finish before DirectInput effects are recreated.
+			tfStream.Set(wheelFFBOn && c.WheelTrueforce)
 			if err := a.di.UpdateWheelFFB(c.DrivingWheel.Wheel.DIGUID, c.DrivingWheel.Wheel.Axis, wheelFFBOn, c.WheelTrueforce,
 				rumblePct, audioPct, centerPct); err != nil {
 				a.postStatus("Wheel force feedback unavailable: " + err.Error())
 			}
-			tfCenterPct.Store(int32(centerPct))
-			tfRumblePct.Store(int32(rumblePct))
-			tfAudioPct.Store(int32(audioPct))
-			tfStream.Set(wheelFFBOn && c.WheelTrueforce)
 
 			cycleBind, cycleBound, nextProfile := a.cycleSettings()
 			ids := []int{}
