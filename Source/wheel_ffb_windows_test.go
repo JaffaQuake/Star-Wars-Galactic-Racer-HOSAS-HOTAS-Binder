@@ -3,7 +3,30 @@ package main
 import (
 	"math"
 	"testing"
+	"time"
 )
+
+func TestAudioMenuGainFadesOffThrottle(t *testing.T) {
+	now := time.Now()
+	lastThrottleAt.Store(0)
+	if g := audioMenuGain(now); g != 0 {
+		t.Fatalf("never on throttle (menus at launch) = %v", g)
+	}
+	noteThrottle(10)
+	if g := audioMenuGain(now); g != 0 {
+		t.Fatalf("light trigger touch must not count as driving: %v", g)
+	}
+	noteThrottle(200)
+	at := time.Unix(0, lastThrottleAt.Load())
+	for _, c := range []struct {
+		after time.Duration
+		want  float64
+	}{{0, 1}, {menuIdleAfter, 1}, {menuIdleAfter + menuFade/2, 0.5}, {menuIdleAfter + menuFade, 0}} {
+		if g := audioMenuGain(at.Add(c.after)); math.Abs(g-c.want) > 1e-6 {
+			t.Fatalf("%v off throttle: gain %v, want %v", c.after, g, c.want)
+		}
+	}
+}
 
 func TestWheelFFBScaling(t *testing.T) {
 	for _, c := range []struct{ v, want int }{{0, 50}, {-1, 0}, {150, 100}, {25, 25}} {

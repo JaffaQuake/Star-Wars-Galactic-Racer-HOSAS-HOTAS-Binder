@@ -30,6 +30,34 @@ const (
 	defaultWheelCenteringStrength = 30
 )
 
+// Menu heuristic: in a race the throttle is rarely off for long, so audio
+// haptics fade out a few seconds after it is released (menus play music) and
+// come back on throttle. The game itself is never inspected.
+const (
+	menuIdleAfter   = 3 * time.Second
+	menuFade        = time.Second
+	menuThrottleMin = 25 // RT value that counts as driving
+)
+
+var lastThrottleAt atomic.Int64 // UnixNano; 0 = not since launch
+
+func noteThrottle(rt byte) {
+	if rt > menuThrottleMin {
+		lastThrottleAt.Store(time.Now().UnixNano())
+	}
+}
+
+// audioMenuGain is 1 while driving and falls to 0 over menuFade once the
+// throttle has been idle for menuIdleAfter.
+func audioMenuGain(now time.Time) float64 {
+	at := lastThrottleAt.Load()
+	if at == 0 {
+		return 0
+	}
+	idle := now.Sub(time.Unix(0, at)) - menuIdleAfter
+	return max(0, min(1, 1-float64(idle)/float64(menuFade)))
+}
+
 // ffbPercent maps a config value to 0..100: unset (0) uses the default, negative turns the effect off.
 func ffbPercent(v, def int) int {
 	switch {
@@ -142,7 +170,8 @@ func (m *directInputManager) UpdateWheelFFB(guid string, axis int, active, truef
 			return err
 		}
 	}
-	want := wheelFFBMagnitudes(rumbleLarge.Load(), rumbleSmall.Load(), audioRumbleLevel.Load(), rumblePct, audioPct, centerPct)
+	audio := uint32(float64(audioRumbleLevel.Load()) * audioMenuGain(time.Now()))
+	want := wheelFFBMagnitudes(rumbleLarge.Load(), rumbleSmall.Load(), audio, rumblePct, audioPct, centerPct)
 	for i, e := range m.ffb.effects {
 		if want[i] == m.ffb.last[i] {
 			continue

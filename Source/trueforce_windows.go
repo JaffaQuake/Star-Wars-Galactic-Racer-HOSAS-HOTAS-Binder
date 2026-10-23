@@ -442,7 +442,7 @@ func (s *tfStreamer) stream(stop <-chan struct{}) (err error) {
 		}
 		n := 0
 		if due > 0 {
-			gain := float64(tfAudioPct.Load()) / 100 * tfAudioGain
+			gain := float64(tfAudioPct.Load()) / 100 * tfAudioGain * audioMenuGain(now)
 			samples := tfAudio.pop(due)
 			silent := true
 			for _, v := range samples {

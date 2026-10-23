@@ -4240,6 +4240,7 @@ func (x *xboxBridge) Update(r xusbReport) error {
 	if !x.ready {
 		return fmt.Errorf("Xbox not ready")
 	}
+	noteThrottle(r.RightTrigger) // menu heuristic for audio haptics
 	rc, _, _ := x.targetUpdate.Call(x.client, x.target, uintptr(unsafe.Pointer(&r)))
 	if uint32(rc) != 0x20000000 {
 		return fmt.Errorf("update failed 0x%X", uint32(rc))
