@@ -328,6 +328,9 @@ const (
 	idWheelHandbrakeButton
 	idWheelHandbrakeLearn
 	idWheelHandbrakeDetect
+	idWheelCenteringStrength
+	idWheelRumbleStrength
+	idWheelAudioStrength
 )
 
 const (
@@ -715,6 +718,9 @@ type config struct {
 	ThumbDISideSpan        int32                      `json:"thumb_di_side_span"`
 	ThumbDIForwardSpan     int32                      `json:"thumb_di_forward_span"`
 	PollingHz              int                        `json:"polling_hz"`
+	WheelRumbleStrength    int                        `json:"wheel_rumble_strength"`    // 0 = default, <0 = off
+	WheelCenteringStrength int                        `json:"wheel_centering_strength"` // 0 = default, <0 = off
+	WheelAudioStrength     int                        `json:"wheel_audio_strength"`     // 0 = default, <0 = off
 	MonitorDuringGameplay  bool                       `json:"monitor_during_gameplay"`
 }
 
@@ -961,6 +967,7 @@ type directInputManager struct {
 	di      uintptr
 	devices []*diDevice
 	hwnd    uintptr
+	ffb     wheelFFB
 }
 
 var diEnumMu sync.Mutex
@@ -1130,6 +1137,7 @@ func (m *directInputManager) Stop() {
 }
 
 func (m *directInputManager) stopLocked() {
+	m.releaseWheelFFBLocked()
 	for _, d := range m.devices {
 		if d.Ptr != 0 {
 			comCall(d.Ptr, 8) // Unacquire
@@ -1443,6 +1451,7 @@ type xboxBridge struct {
 	dll                                                            *syscall.DLL
 	alloc, free, connect, disconnect                               *syscall.Proc
 	targetAlloc, targetFree, targetAdd, targetRemove, targetUpdate *syscall.Proc
+	notifyUnregister                                               *syscall.Proc
 	client                                                         uintptr
 	target                                                         uintptr
 	ready                                                          bool
@@ -1499,9 +1508,10 @@ type appState struct {
 	contentWidth             int
 	contentHeight            int
 	tuning                   *axisTuningPopup
-	activeRightTab           int // 0 = mappings, 1 = embedded tuning; never persisted
+	activeRightTab           int // 0 = mappings, 1 = embedded tuning, 2 = wheel haptics; never persisted
 	mappingTabGroup          []uintptr
 	calibrationTabGroup      []uintptr
+	wheelFFBTabGroup         []uintptr
 	monitorLeftHeading       uintptr
 	monitorRightHeading      uintptr
 	monitorOutputHeading     uintptr
@@ -1658,6 +1668,11 @@ func isRightTabTextControl(a *appState, ctrl uintptr) bool {
 		}
 	}
 	for _, h := range a.calibrationTabGroup {
+		if h == ctrl {
+			return true
+		}
+	}
+	for _, h := range a.wheelFFBTabGroup {
 		if h == ctrl {
 			return true
 		}
@@ -2239,6 +2254,7 @@ func main() {
 
 	app.pollWG.Add(1)
 	go app.pollLoop()
+	go runAudioRumble(app.stopCh, func(err error) { app.postStatus("Audio rumble unavailable: " + err.Error()) })
 
 	var m msg
 	for {
@@ -3261,6 +3277,14 @@ func (a *appState) pollLoop() {
 				currentInterval = desiredInterval
 			}
 
+			wheelFFBOn := normalizeControlMode(c.ControlMode) == "WHEEL" && a.mappingActive.Load()
+			if err := a.di.UpdateWheelFFB(c.DrivingWheel.Wheel.DIGUID, c.DrivingWheel.Wheel.Axis, wheelFFBOn,
+				ffbPercent(c.WheelRumbleStrength, defaultWheelRumbleStrength),
+				ffbPercent(c.WheelAudioStrength, defaultWheelAudioStrength),
+				ffbPercent(c.WheelCenteringStrength, defaultWheelCenteringStrength)); err != nil {
+				a.postStatus("Wheel force feedback unavailable: " + err.Error())
+			}
+
 			cycleBind, cycleBound, nextProfile := a.cycleSettings()
 			ids := []int{}
 			switch normalizeControlMode(c.ControlMode) {
@@ -4188,6 +4212,12 @@ func (x *xboxBridge) Start() error {
 		x.cleanupLocked()
 		return fmt.Errorf("could not add virtual Xbox controller (0x%X)", uint32(r))
 	}
+	// Game rumble for the wheel; optional so older ViGEmClient builds still work.
+	if reg, err := dll.FindProc("vigem_target_x360_register_notification"); err == nil {
+		if r, _, _ = reg.Call(client, target, x360NotificationCallback, 0); uint32(r) == 0x20000000 {
+			x.notifyUnregister, _ = dll.FindProc("vigem_target_x360_unregister_notification")
+		}
+	}
 	x.ready = true
 	neutral := xusbReport{}
 	_, _, _ = x.targetUpdate.Call(x.client, x.target, uintptr(unsafe.Pointer(&neutral)))
@@ -4207,6 +4237,12 @@ func (x *xboxBridge) Update(r xusbReport) error {
 }
 func (x *xboxBridge) Stop() { x.mu.Lock(); defer x.mu.Unlock(); x.cleanupLocked() }
 func (x *xboxBridge) cleanupLocked() {
+	if x.target != 0 && x.notifyUnregister != nil {
+		x.notifyUnregister.Call(x.target)
+	}
+	x.notifyUnregister = nil
+	rumbleLarge.Store(0)
+	rumbleSmall.Store(0)
 	if x.target != 0 && x.client != 0 && x.targetRemove != nil {
 		x.targetRemove.Call(x.client, x.target)
 	}
@@ -5009,7 +5045,7 @@ func (a *appState) updateContextVisibility() {
 
 // selectRightTab toggles panel controls without resetting the active tab on mode changes.
 func (a *appState) selectRightTab(tab int) {
-	if tab != 1 {
+	if tab < 0 || tab > 2 {
 		tab = 0
 	}
 	a.closeCombo(false)
@@ -5021,6 +5057,7 @@ func (a *appState) selectRightTab(tab int) {
 		procSendMessageW.Call(nativeTabs, TCM_SETCURSEL, uintptr(tab), 0)
 	}
 	a.setGroupVisible(a.mappingTabGroup, tab == 0)
+	a.setGroupVisible(a.wheelFFBTabGroup, tab == 2)
 	for _, h := range a.calibrationTabGroup {
 		if h != a.controls[idPreserve] {
 			procShowWindow.Call(h, map[bool]uintptr{true: SW_SHOW, false: SW_HIDE}[tab == 1])
@@ -5416,7 +5453,7 @@ func (a *appState) createUI() {
 	// the page content (created next) in sibling Z-order.
 	panelTabs := a.createControl("SysTabControl32", "", WS_CHILD|WS_VISIBLE|WS_TABSTOP,
 		bindingX-13, 12, 640, 976, idRightPanelTabs)
-	for i, name := range []string{"Mappings", "Input Curves/Axis Tuning"} {
+	for i, name := range []string{"Mappings", "Input Curves/Axis Tuning", "Wheel Haptics"} {
 		label := utf16ptr(name)
 		item := tabControlItem{Mask: TCIF_TEXT, Text: label}
 		procSendMessageW.Call(panelTabs, TCM_INSERTITEMW, uintptr(i), uintptr(unsafe.Pointer(&item)))
@@ -5480,6 +5517,22 @@ func (a *appState) createUI() {
 		a.createCheck("Hybrid preserve thrust", bindingX+292, 99, 240, 27, idPreserve))
 	a.calibrationTabGroup = append(a.calibrationTabGroup, a.controls[idPreserve])
 	a.createEmbeddedAxisTuning(bindingX, 152, axisWidth, 807)
+	// Wheel Haptics tab: force feedback strengths (wheel_ffb_windows.go).
+	a.wheelFFBTabGroup = append(a.wheelFFBTabGroup,
+		a.createLabel("Wheel Haptics", bindingX, 64, 240, 24),
+		a.createLabel("Applies in Driving Wheel control mode while the virtual Xbox controller is active. 0% turns an effect off. Close SimHub/Trueforce plugins first: the wheel needs exclusive force feedback access.", bindingX, 92, axisWidth, 44))
+	for i, f := range []struct {
+		name string
+		id   int
+	}{{"Centering spring", idWheelCenteringStrength}, {"Game rumble", idWheelRumbleStrength}, {"Audio rumble", idWheelAudioStrength}} {
+		y := 150 + i*40
+		a.wheelFFBTabGroup = append(a.wheelFFBTabGroup,
+			a.createLabel(f.name, bindingX, y+4, 150, 22),
+			a.createEdit("0", bindingX+160, y, 50, 25, f.id),
+			a.createLabel("%", bindingX+216, y+4, 20, 22))
+	}
+	a.wheelFFBTabGroup = append(a.wheelFFBTabGroup,
+		a.createLabel("Audio rumble listens to your default speakers, so music, voice chat and other apps add rumble too. Lower in-game music volume if it drowns out the engine.", bindingX, 275, axisWidth, 44))
 	// Start on Mappings regardless of the saved control mode.
 	a.selectRightTab(0)
 
@@ -5529,7 +5582,7 @@ func (a *appState) createUI() {
 	a.tooltipForID(idTestCamLeft, "Force virtual Xbox Right Stick X fully left briefly. Useful for camera-output diagnostics.")
 	a.tooltipForID(idTestCamRight, "Force virtual Xbox Right Stick X fully right briefly. Useful for camera-output diagnostics.")
 	a.tooltipForID(idSave, "Save this profile's device, axis, polling, twist, pedal, Walking Mode and learned Xbox-button settings. Global Profile Cycle binding and inclusion checkboxes are saved in the profile collection.")
-	a.tooltipForID(idRightPanelTabs, "Mappings contains Xbox button bindings and the GLOBAL Cycle Profile button. Input Curves/Axis Tuning adjusts racing response shapes and polling. Two Stage Custom Midpoint determines where curve segments join; it does NOT move Walking Mode neutral, which stays fixed at 45-55% on physical throttle axes.")
+	a.tooltipForID(idRightPanelTabs, "Mappings contains Xbox button bindings and the GLOBAL Cycle Profile button. Input Curves/Axis Tuning adjusts racing response shapes and polling. Wheel Haptics sets centering and rumble strength for force feedback wheels. Two Stage Custom Midpoint determines where curve segments join; it does NOT move Walking Mode neutral, which stays fixed at 45-55% on physical throttle axes.")
 	a.tooltipForID(idPreserve, "ON (default): when both inputs are forward, thrust follows the stronger input, preserving acceleration while steering. Pulling one input behind center progressively reduces thrust. Both inputs backward retain reverse/braking. OFF: thrust is the average of Left Input and Right Input, so turning by moving one stick less forward also reduces acceleration (e.g. Left 100%, Right 0% produces only 50% thrust).")
 	a.tooltipForID(idPollingRate, "Native Windows dropdown: all five 100/200/250/500/1000 Hz choices are available. Controller loop polling frequency. Changes save to polling_hz in your existing settings file and are restored after installing an update. Higher rates may use more CPU; hardware/Windows update rates can still be lower.")
 	a.tooltipForID(idSocialLinks, "Open https://linktr.ee/jaffaquake in your default web browser to find new updates and socials.")
@@ -5592,6 +5645,9 @@ func (a *appState) createUI() {
 		a.tooltipForID(row.invert, row.label+": reverse physical travel/direction.")
 		a.tooltipForID(row.detect, row.label+": move this wheel or pedal strongly to automatically detect device, axis and direction.")
 	}
+	a.tooltipForID(idWheelCenteringStrength, "Centering spring strength while the virtual Xbox controller is active (0-100%). 0 turns it off, e.g. to use G HUB's centering instead.")
+	a.tooltipForID(idWheelRumbleStrength, "Game rumble (boosts, crashes) played on the wheel (0-100%). 0 turns it off.")
+	a.tooltipForID(idWheelAudioStrength, "Continuous rumble from game audio bass, captured from your default speakers (0-100%). Other apps' sound counts too. 0 turns it off.")
 	a.tooltipForID(idWheelPedal3Mode, "Optional Pedal 3: Off, Boost (Xbox A), or Drift (Xbox X). Signals past the calibration deadzone send a full button press.")
 	a.tooltipForID(idWheelHandbrakeButton, "Use a learned digital handbrake button instead of the analog Hand Brake axis. Pressed equals 100%.")
 	a.tooltipForID(idWheelHandbrakeDetect, "Detect Hand Brake analog axis: pull the handbrake once. Use Button Input instead for a digital switch.")
@@ -5831,6 +5887,9 @@ func (a *appState) applyConfigToUI() {
 	comboSetIndex(idPedalLeftKey, keyOptionIndex(c.PedalLeftKey))
 	comboSetIndex(idPedalRightKey, keyOptionIndex(c.PedalRightKey))
 	setText(a.controls[idPedalStrength], strconv.Itoa(c.PedalSteerStrength))
+	setText(a.controls[idWheelCenteringStrength], strconv.Itoa(ffbPercent(c.WheelCenteringStrength, defaultWheelCenteringStrength)))
+	setText(a.controls[idWheelRumbleStrength], strconv.Itoa(ffbPercent(c.WheelRumbleStrength, defaultWheelRumbleStrength)))
+	setText(a.controls[idWheelAudioStrength], strconv.Itoa(ffbPercent(c.WheelAudioStrength, defaultWheelAudioStrength)))
 	setText(a.controls[idCameraSensitivity], strconv.Itoa(c.CameraSensitivity))
 	setText(a.controls[idCameraDeadzone], strconv.Itoa(c.CameraDeadzone))
 	setText(a.controls[idPedalKeyThreshold], strconv.Itoa(c.PedalKeyThreshold))
@@ -6201,6 +6260,18 @@ func (a *appState) syncConfigFromUI() {
 			n = 95
 		}
 		c.PedalKeyThreshold = n
+	}
+	// The UI shows the effective 0-100%; config keeps 0 for "default", so an explicit 0 is stored as off (-1).
+	for _, f := range []struct {
+		id  int
+		dst *int
+	}{{idWheelCenteringStrength, &c.WheelCenteringStrength}, {idWheelRumbleStrength, &c.WheelRumbleStrength}, {idWheelAudioStrength, &c.WheelAudioStrength}} {
+		if n, e := strconv.Atoi(strings.TrimSpace(getText(a.controls[f.id]))); e == nil {
+			if n <= 0 {
+				n = -1
+			}
+			*f.dst = min(n, 100)
+		}
 	}
 	if n, e := strconv.Atoi(strings.TrimSpace(getText(a.controls[idPedalStrength]))); e == nil {
 		if n < 0 {
