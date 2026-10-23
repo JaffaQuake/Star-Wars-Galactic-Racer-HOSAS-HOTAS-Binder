@@ -5532,7 +5532,7 @@ func (a *appState) createUI() {
 			a.createLabel("%", bindingX+216, y+4, 20, 22))
 	}
 	a.wheelFFBTabGroup = append(a.wheelFFBTabGroup,
-		a.createLabel("Audio rumble listens to your default speakers, so music, voice chat and other apps add rumble too. Lower in-game music volume if it drowns out the engine.", bindingX, 275, axisWidth, 44))
+		a.createLabel("Audio rumble listens only to Galactic Racer's own sound (voice chat and other apps are ignored) and starts automatically when the game is running. Lower in-game music volume if it drowns out the engine.", bindingX, 275, axisWidth, 44))
 	// Start on Mappings regardless of the saved control mode.
 	a.selectRightTab(0)
 
@@ -5647,7 +5647,7 @@ func (a *appState) createUI() {
 	}
 	a.tooltipForID(idWheelCenteringStrength, "Centering spring strength while the virtual Xbox controller is active (0-100%). 0 turns it off, e.g. to use G HUB's centering instead.")
 	a.tooltipForID(idWheelRumbleStrength, "Game rumble (boosts, crashes) played on the wheel (0-100%). 0 turns it off.")
-	a.tooltipForID(idWheelAudioStrength, "Continuous rumble from game audio bass, captured from your default speakers (0-100%). Other apps' sound counts too. 0 turns it off.")
+	a.tooltipForID(idWheelAudioStrength, "Continuous rumble from the bass of Galactic Racer's own audio (0-100%). Needs Windows 10 build 20348 or newer. 0 turns it off.")
 	a.tooltipForID(idWheelPedal3Mode, "Optional Pedal 3: Off, Boost (Xbox A), or Drift (Xbox X). Signals past the calibration deadzone send a full button press.")
 	a.tooltipForID(idWheelHandbrakeButton, "Use a learned digital handbrake button instead of the analog Hand Brake axis. Pressed equals 100%.")
 	a.tooltipForID(idWheelHandbrakeDetect, "Detect Hand Brake analog axis: pull the handbrake once. Use Button Input instead for a digital switch.")
