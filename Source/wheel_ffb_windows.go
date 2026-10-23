@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"syscall"
+	"time"
 	"unsafe"
 )
 
@@ -103,7 +104,9 @@ type wheelFFB struct {
 
 // UpdateWheelFFB runs on every poll. It is cheap when nothing changed and
 // returns an error only the first time a device refuses force feedback.
-func (m *directInputManager) UpdateWheelFFB(guid string, axis int, active bool, rumblePct, audioPct, centerPct int) error {
+// With trueforce set, DirectInput effects stay off (the wheel would ignore
+// them) and the steering position is published for trueforce_windows.go.
+func (m *directInputManager) UpdateWheelFFB(guid string, axis int, active, trueforce bool, rumblePct, audioPct, centerPct int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	var dev *diDevice
@@ -118,6 +121,14 @@ func (m *directInputManager) UpdateWheelFFB(guid string, axis int, active bool, 
 	if dev == nil {
 		m.releaseWheelFFBLocked()
 		m.ffb.failed = 0 // stopping/restarting the Xbox controller retries
+		return nil
+	}
+	if trueforce {
+		m.releaseWheelFFBLocked()
+		if st, ok := m.stateLocked(dev); ok {
+			tfWheelPos.Store(diAxes(st)[axis])
+			tfWheelPosAt.Store(time.Now().UnixNano())
+		}
 		return nil
 	}
 	if m.ffb.dev != dev.Ptr {

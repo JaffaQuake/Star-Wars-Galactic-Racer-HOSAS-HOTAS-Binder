@@ -243,6 +243,7 @@ func captureProcess(pid uint32, stop <-chan struct{}) error {
 	defer comCall(client, 11) // Stop
 
 	env := newAudioEnvelope(captureRate)
+	dec := newTFDecimator(captureRate)
 	lastCheck := time.Now()
 	for {
 		select {
@@ -265,7 +266,11 @@ func captureProcess(pid uint32, stop <-chan struct{}) error {
 				break // AUDCLNT_S_BUFFER_EMPTY or error: wait for the next event
 			}
 			if flags&0x2 == 0 && data != nil { // not AUDCLNT_BUFFERFLAGS_SILENT
-				env.feed(unsafe.Slice(data, int(frames)*captureChannels), captureChannels)
+				samples := unsafe.Slice(data, int(frames)*captureChannels)
+				env.feed(samples, captureChannels)
+				if tfAudioWant.Load() {
+					dec.feed(samples, captureChannels, tfAudio.push)
+				}
 			} else {
 				env.push(0)
 			}

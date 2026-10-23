@@ -331,6 +331,7 @@ const (
 	idWheelCenteringStrength
 	idWheelRumbleStrength
 	idWheelAudioStrength
+	idWheelTrueforce
 )
 
 const (
@@ -721,6 +722,7 @@ type config struct {
 	WheelRumbleStrength    int                        `json:"wheel_rumble_strength"`    // 0 = default, <0 = off
 	WheelCenteringStrength int                        `json:"wheel_centering_strength"` // 0 = default, <0 = off
 	WheelAudioStrength     int                        `json:"wheel_audio_strength"`     // 0 = default, <0 = off
+	WheelTrueforce         bool                       `json:"wheel_trueforce"`
 	MonitorDuringGameplay  bool                       `json:"monitor_during_gameplay"`
 }
 
@@ -2255,6 +2257,7 @@ func main() {
 	app.pollWG.Add(1)
 	go app.pollLoop()
 	go runAudioRumble(app.stopCh, func(err error) { app.postStatus("Audio rumble unavailable: " + err.Error()) })
+	tfStream.reportErr = func(err error) { app.postStatus(err.Error()) }
 
 	var m msg
 	for {
@@ -2268,6 +2271,7 @@ func main() {
 
 	app.stopOnce.Do(func() { close(app.stopCh) })
 	app.pollWG.Wait()
+	tfStream.Set(false) // end the Trueforce session cleanly before exit
 	app.releaseAllKeyboardOutputs()
 	app.xbox.Stop()
 	app.di.Stop()
@@ -3278,12 +3282,17 @@ func (a *appState) pollLoop() {
 			}
 
 			wheelFFBOn := normalizeControlMode(c.ControlMode) == "WHEEL" && a.mappingActive.Load()
-			if err := a.di.UpdateWheelFFB(c.DrivingWheel.Wheel.DIGUID, c.DrivingWheel.Wheel.Axis, wheelFFBOn,
-				ffbPercent(c.WheelRumbleStrength, defaultWheelRumbleStrength),
-				ffbPercent(c.WheelAudioStrength, defaultWheelAudioStrength),
-				ffbPercent(c.WheelCenteringStrength, defaultWheelCenteringStrength)); err != nil {
+			rumblePct := ffbPercent(c.WheelRumbleStrength, defaultWheelRumbleStrength)
+			audioPct := ffbPercent(c.WheelAudioStrength, defaultWheelAudioStrength)
+			centerPct := ffbPercent(c.WheelCenteringStrength, defaultWheelCenteringStrength)
+			if err := a.di.UpdateWheelFFB(c.DrivingWheel.Wheel.DIGUID, c.DrivingWheel.Wheel.Axis, wheelFFBOn, c.WheelTrueforce,
+				rumblePct, audioPct, centerPct); err != nil {
 				a.postStatus("Wheel force feedback unavailable: " + err.Error())
 			}
+			tfCenterPct.Store(int32(centerPct))
+			tfRumblePct.Store(int32(rumblePct))
+			tfAudioPct.Store(int32(audioPct))
+			tfStream.Set(wheelFFBOn && c.WheelTrueforce)
 
 			cycleBind, cycleBound, nextProfile := a.cycleSettings()
 			ids := []int{}
@@ -5532,7 +5541,9 @@ func (a *appState) createUI() {
 			a.createLabel("%", bindingX+216, y+4, 20, 22))
 	}
 	a.wheelFFBTabGroup = append(a.wheelFFBTabGroup,
-		a.createLabel("Audio rumble listens only to Galactic Racer's own sound (voice chat and other apps are ignored) and starts automatically when the game is running. Lower in-game music volume if it drowns out the engine.", bindingX, 275, axisWidth, 44))
+		a.createCheck("Send audio rumble to Trueforce (experimental; close G HUB)", bindingX, 270, axisWidth, 25, idWheelTrueforce))
+	a.wheelFFBTabGroup = append(a.wheelFFBTabGroup,
+		a.createLabel("Audio rumble listens only to Galactic Racer's own sound (voice chat and other apps are ignored) and starts automatically when the game is running. Lower in-game music volume if it drowns out the engine.", bindingX, 310, axisWidth, 44))
 	// Start on Mappings regardless of the saved control mode.
 	a.selectRightTab(0)
 
@@ -5647,6 +5658,7 @@ func (a *appState) createUI() {
 	}
 	a.tooltipForID(idWheelCenteringStrength, "Centering spring strength while the virtual Xbox controller is active (0-100%). 0 turns it off, e.g. to use G HUB's centering instead.")
 	a.tooltipForID(idWheelRumbleStrength, "Game rumble (boosts, crashes) played on the wheel (0-100%). 0 turns it off.")
+	a.tooltipForID(idWheelTrueforce, "Logitech RS50 / G PRO only. Plays game audio on the wheel's Trueforce haptics instead of as force feedback, so it buzzes without pulling the rim. Centering and game rumble move into the same stream. G HUB and SimHub must be closed.")
 	a.tooltipForID(idWheelAudioStrength, "Continuous rumble from the bass of Galactic Racer's own audio (0-100%). Needs Windows 10 build 20348 or newer. 0 turns it off.")
 	a.tooltipForID(idWheelPedal3Mode, "Optional Pedal 3: Off, Boost (Xbox A), or Drift (Xbox X). Signals past the calibration deadzone send a full button press.")
 	a.tooltipForID(idWheelHandbrakeButton, "Use a learned digital handbrake button instead of the analog Hand Brake axis. Pressed equals 100%.")
@@ -5890,6 +5902,7 @@ func (a *appState) applyConfigToUI() {
 	setText(a.controls[idWheelCenteringStrength], strconv.Itoa(ffbPercent(c.WheelCenteringStrength, defaultWheelCenteringStrength)))
 	setText(a.controls[idWheelRumbleStrength], strconv.Itoa(ffbPercent(c.WheelRumbleStrength, defaultWheelRumbleStrength)))
 	setText(a.controls[idWheelAudioStrength], strconv.Itoa(ffbPercent(c.WheelAudioStrength, defaultWheelAudioStrength)))
+	setChecked(a.controls[idWheelTrueforce], c.WheelTrueforce)
 	setText(a.controls[idCameraSensitivity], strconv.Itoa(c.CameraSensitivity))
 	setText(a.controls[idCameraDeadzone], strconv.Itoa(c.CameraDeadzone))
 	setText(a.controls[idPedalKeyThreshold], strconv.Itoa(c.PedalKeyThreshold))
@@ -6261,6 +6274,7 @@ func (a *appState) syncConfigFromUI() {
 		}
 		c.PedalKeyThreshold = n
 	}
+	c.WheelTrueforce = isChecked(a.controls[idWheelTrueforce])
 	// The UI shows the effective 0-100%; config keeps 0 for "default", so an explicit 0 is stored as off (-1).
 	for _, f := range []struct {
 		id  int
