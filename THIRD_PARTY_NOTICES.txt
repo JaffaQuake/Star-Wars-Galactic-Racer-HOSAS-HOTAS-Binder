@@ -141,3 +141,19 @@ License: MIT
 v1.94 Beta can detect an existing HidHide installation, register the mapper on its application
 allowlist through HidHideCLI.exe, and open HidHide Configuration Client. HidHide is not included
 or redistributed in this package.
+
+
+===============================================================================
+5. libtrueforce (protocol data adapted into Source/trueforce_windows.go)
+===============================================================================
+
+Project:
+https://github.com/mescon/logitech-rs50-linux-driver (userspace/libtrueforce)
+
+License: GNU Lesser General Public License v2.1 or later (LGPL-2.1-or-later)
+
+The Trueforce packet layout and the 68-packet session init sequence used by
+the optional Trueforce mode were adapted from libtrueforce. No libtrueforce
+code is linked; the adapted portions are distributed under this project's
+GPLv3, as LGPL-2.1-or-later permits. Full license text:
+https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
