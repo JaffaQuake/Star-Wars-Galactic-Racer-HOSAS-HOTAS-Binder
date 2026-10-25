@@ -62,6 +62,8 @@ func monitorDotColor(id uintptr) uintptr {
 		return colorRGB(52, 126, 212) // blue #347ED4
 	case idDriveSteerDot:
 		return colorRGB(40, 151, 83) // green #289753
+	case idPitchDot:
+		return colorRGB(214, 140, 30) // amber #D68C1E
 	default:
 		return colorRGB(90, 90, 90)
 	}

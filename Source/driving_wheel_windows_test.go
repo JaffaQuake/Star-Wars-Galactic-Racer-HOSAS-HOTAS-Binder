@@ -4,6 +4,7 @@ package main
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -82,7 +83,7 @@ func TestWheelAxisMenusAreIsolated(t *testing.T) {
 			t.Fatalf("wrong-mode axis visible %s", entry.Key)
 		}
 	}
-	for _, key := range []string{profileWheelSteering, profileWheelPedal1, profileWheelPedal2, profileWheelPedal3, profileWheelHandbrake, profileTwistLeft, profileTwistRight} {
+	for _, key := range []string{profileWheelSteering, profileWheelPedal1, profileWheelPedal2, profileWheelPedal3, profileWheelHandbrake, profileTwistLeft, profileTwistRight, profileTwist3, profileTwist4, profileTwist5, profileTwist6} {
 		if !found[key] {
 			t.Fatalf("missing tuning profile %s", key)
 		}
@@ -98,7 +99,7 @@ func TestWheelAxisMenusAreIsolated(t *testing.T) {
 func TestAuxiliaryModeChoicesRespectAxisType(t *testing.T) {
 	centered := auxiliaryModeOptions("Centered")
 	lever := auxiliaryModeOptions("Lever")
-	if centered[len(centered)-1] != "Boost/Drift" || lever[len(lever)-2] != "Boost" || lever[len(lever)-1] != "Drift" {
+	if strings.Join(centered[len(centered)-3:], ",") != "Boost/Drift,Boost/Boost,Drift/Drift" || lever[len(lever)-2] != "Boost" || lever[len(lever)-1] != "Drift" {
 		t.Fatalf("wrong options: centered %v lever %v", centered, lever)
 	}
 }

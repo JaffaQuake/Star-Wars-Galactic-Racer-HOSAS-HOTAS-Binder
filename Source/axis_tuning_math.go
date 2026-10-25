@@ -48,6 +48,10 @@ const (
 	profilePedal          = "pedals"
 	profileTwistLeft      = "twist_left"
 	profileTwistRight     = "twist_right"
+	profileTwist3         = "twist_3"
+	profileTwist4         = "twist_4"
+	profileTwist5         = "twist_5"
+	profileTwist6         = "twist_6"
 	profileWheelSteering  = "wheel_steering"
 	profileWheelPedal1    = "wheel_pedal_1"
 	profileWheelPedal2    = "wheel_pedal_2"
@@ -74,6 +78,10 @@ var axisTuneNames = []axisTuneEntry{
 	{profilePedal, "Rudder Pedals", false, false},
 	{profileTwistLeft, "Additional Input 1", false, false},
 	{profileTwistRight, "Additional Input 2", false, false},
+	{profileTwist3, "Additional Input 3", false, false},
+	{profileTwist4, "Additional Input 4", false, false},
+	{profileTwist5, "Additional Input 5", false, false},
+	{profileTwist6, "Additional Input 6", false, false},
 	{profileWheelSteering, "Wheel Steering", false, false},
 	{profileWheelPedal1, "Pedal 1 - Throttle", false, true},
 	{profileWheelPedal2, "Pedal 2 - Brake", false, true},
@@ -258,7 +266,7 @@ func cloneAxisProfiles(src map[string]axisTuneProfile) map[string]axisTuneProfil
 }
 
 // Camera diagnostics are available only while at least one auxiliary input
-// (Rudder Pedals or either Twist Axis) is assigned to Move Camera.
+// (Rudder Pedals or any Additional Input) is assigned to Move Camera.
 func cameraTestButtonsVisible(modes ...string) bool {
 	for _, mode := range modes {
 		if strings.EqualFold(mode, "Move Camera") {
@@ -284,7 +292,7 @@ type tuneInputInfo struct {
 
 func isTuningDigitalMode(mode string) bool {
 	switch strings.ToLower(strings.TrimSpace(mode)) {
-	case "boost", "drift", "boost/drift", "keyboard keys":
+	case "boost", "drift", "boost/drift", "boost/boost", "drift/drift", "keyboard keys":
 		return true
 	}
 	return false

@@ -51,8 +51,8 @@ func TestAxisTuningEntriesByMode(t *testing.T) {
 		hotas bool
 		want  []string
 	}{
-		{"Podracer Style", false, []string{profileHOSASLeft, profileHOSASRight, profileHOSASThrust, profileHOSASSteer, profilePedal, profileTwistLeft, profileTwistRight}},
-		{"Traditional HOTAS", true, []string{profileHOTASX, profileHOTASY, profileHOTASThrottle, profilePedal, profileTwistLeft, profileTwistRight}},
+		{"Podracer Style", false, []string{profileHOSASLeft, profileHOSASRight, profileHOSASThrust, profileHOSASSteer, profilePedal, profileTwistLeft, profileTwistRight, profileTwist3, profileTwist4, profileTwist5, profileTwist6}},
+		{"Traditional HOTAS", true, []string{profileHOTASX, profileHOTASY, profileHOTASThrottle, profilePedal, profileTwistLeft, profileTwistRight, profileTwist3, profileTwist4, profileTwist5, profileTwist6}},
 	}
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
