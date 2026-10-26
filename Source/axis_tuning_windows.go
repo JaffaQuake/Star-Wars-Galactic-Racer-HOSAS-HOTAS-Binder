@@ -643,7 +643,13 @@ func (p *axisTuningPopup) command(id, notify int) {
 func axisTuningWndProc(hwnd uintptr, m uint32, w, l uintptr) uintptr {
 	p := app.tuning
 	switch m {
-	case WM_CTLCOLORSTATIC:
+	case WM_CTLCOLORSTATIC, WM_CTLCOLOREDIT, WM_CTLCOLORLISTBOX, WM_CTLCOLORBTN:
+		if brush := themeCtlColor(m, w, l, true); brush != 0 {
+			return brush
+		}
+		if m != WM_CTLCOLORSTATIC {
+			break
+		}
 		// Keep embedded curve-page label text consistent with its system
 		// button-face background, just like the outer tab's STATIC labels.
 		procSetBkMode.Call(w, TRANSPARENT)
@@ -651,6 +657,10 @@ func axisTuningWndProc(hwnd uintptr, m uint32, w, l uintptr) uintptr {
 		color, _, _ := procGetSysColor.Call(COLOR_BTNFACE)
 		procSetBkColor.Call(w, color)
 		return face
+	case WM_DRAWITEM:
+		if themeDrawButton(l) {
+			return 1
+		}
 	case WM_COMMAND:
 		if p != nil && p.hwnd == hwnd {
 			p.command(loword(w), hiword(w))
@@ -705,9 +715,10 @@ func (p *axisTuningPopup) paintGraph() {
 	if p.graphBottom <= p.graphTop {
 		return
 	}
-	white, _, _ := procCreateSolidBrush.Call(colorRGB(255, 255, 255))
-	procFillRect.Call(dc, uintptr(unsafe.Pointer(&graph)), white)
-	procDeleteObject.Call(white)
+	pal := currentPalette
+	back, _, _ := procCreateSolidBrush.Call(pal.GraphBack)
+	procFillRect.Call(dc, uintptr(unsafe.Pointer(&graph)), back)
+	procDeleteObject.Call(back)
 	draw := func(points [][2]int, clr uintptr, width int) {
 		pen, _, _ := procCreatePen.Call(0, uintptr(width), clr)
 		old, _, _ := procSelectObject.Call(dc, pen)
@@ -726,10 +737,10 @@ func (p *axisTuningPopup) paintGraph() {
 	for i := 0; i <= 4; i++ {
 		x := x0 + (x1-x0)*i/4
 		y := y0 - (y0-y1)*i/4
-		draw([][2]int{{x, y1}, {x, y0}}, colorRGB(224, 228, 233), 1)
-		draw([][2]int{{x0, y}, {x1, y}}, colorRGB(224, 228, 233), 1)
+		draw([][2]int{{x, y1}, {x, y0}}, pal.GraphGrid, 1)
+		draw([][2]int{{x0, y}, {x1, y}}, pal.GraphGrid, 1)
 	}
-	draw([][2]int{{x0, y0}, {x1, y1}}, colorRGB(158, 164, 173), 1)
+	draw([][2]int{{x0, y0}, {x1, y1}}, pal.GraphDiagonal, 1)
 	tune := p.currentValue()
 	_, _, oneWay := p.entry()
 	getOutput := func(frac float64) float64 {
@@ -760,7 +771,7 @@ func (p *axisTuningPopup) paintGraph() {
 		draw(curvePoints(cut, 1), colorRGB(224, 141, 51), 3)
 		markerX := x0 + int(math.Round(float64(x1-x0)*cut))
 		markerY := y0 - int(math.Round(float64(y0-y1)*getOutput(cut)))
-		brush, _, _ := procCreateSolidBrush.Call(colorRGB(255, 255, 255))
+		brush, _, _ := procCreateSolidBrush.Call(pal.GraphMarker)
 		old, _, _ := procSelectObject.Call(dc, brush)
 		procEllipse.Call(dc, uintptr(markerX-4), uintptr(markerY-4), uintptr(markerX+4), uintptr(markerY+4))
 		procSelectObject.Call(dc, old)

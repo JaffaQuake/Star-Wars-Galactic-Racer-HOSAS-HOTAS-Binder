@@ -716,6 +716,7 @@ type config struct {
 	ThumbDIForwardSpan     int32                      `json:"thumb_di_forward_span"`
 	PollingHz              int                        `json:"polling_hz"`
 	MonitorDuringGameplay  bool                       `json:"monitor_during_gameplay"`
+	Theme                  string                     `json:"theme,omitempty"` // Light, Dark or System; app-wide, not per profile
 }
 
 type xusbReport struct {
@@ -2537,6 +2538,7 @@ func loadConfig(c *config) {
 	readInt(raw, "thumb_di_side_axis", &d.ThumbDISideAxis)
 	readInt(raw, "thumb_di_forward_axis", &d.ThumbDIForwardAxis)
 	readInt(raw, "polling_hz", &d.PollingHz)
+	readString(raw, "theme", &d.Theme)
 	if d.CameraSensitivity <= 0 || d.CameraSensitivity > 250 {
 		d.CameraSensitivity = 100
 	}
@@ -4237,7 +4239,21 @@ func wndProc(hwnd uintptr, message uint32, wParam, lParam uintptr) uintptr {
 	case WM_COMMAND:
 		app.onCommand(loword(wParam), hiword(wParam))
 		return 0
+	case WM_CTLCOLOREDIT, WM_CTLCOLORLISTBOX, WM_CTLCOLORBTN:
+		if brush := themeCtlColor(message, wParam, lParam, false); brush != 0 {
+			return brush
+		}
+	case WM_DRAWITEM:
+		if themeDrawButton(lParam) {
+			return 1
+		}
+	case WM_SETTINGCHANGE:
+		// Windows app mode changes reach System Specified without a restart.
+		app.applyTheme()
 	case WM_CTLCOLORSTATIC:
+		if brush := themeCtlColor(message, wParam, lParam, isRightTabTextControl(app, lParam)); brush != 0 {
+			return brush
+		}
 		// Win32 STATIC text may otherwise draw opaque *white* rectangles
 		// behind labels, especially after a themed tab switch. Always set
 		// the DC background mode explicitly and return the matching brush
@@ -5494,6 +5510,8 @@ func (a *appState) createUI() {
 	applyEmphasisFont(a.createButton("Initiate Xbox Controller", bindingX+footerShift+118, 1027, 280, 34, idStart), a.actionFont)
 	applyEmphasisFont(a.createButton("Save settings", bindingX+footerShift+408, 1027, 153, 34, idSave), a.actionFont)
 
+	a.createThemeSelector()
+
 	// Hover help.
 	a.tooltipForID(idHOTATBrakeBehavior, "RACING: HOTAT shared left/right braking. Off = forward only; Digital at Idle = full brake under Idle %; Analog Brake Zone = proportional braking below Zone %. Walking instead uses a fixed 45-55% travel neutral zone (stand still), regardless of these racing settings.")
 	for i := 0; i < profileCount; i++ {
@@ -5525,6 +5543,7 @@ func (a *appState) createUI() {
 	a.tooltipForID(idCycleLabel, "Cycle Profile Button: global hardware binding, independent of all five profiles. Checked profiles are visited in order; unchecked profiles are only skipped, never deleted. If none are checked, the button does nothing.")
 	a.tooltipForID(idHOTATBrakeZone, "Analog Brake Zone controls RACING braking only, not Walking Mode. Walking always stands still at 45-55% throttle travel, walks backward below and forward above that range.")
 	a.tooltipForID(idStart, "Creates the virtual Xbox controller and begins sending configured controller/keyboard outputs to the game. Deactivate Xbox Controller removes the virtual controller.")
+	a.tooltipForID(idTheme, "Light Mode is the original look. Dark Mode uses dark backgrounds. System Specified follows Windows Settings > Personalization > Colors > \"Choose your default app mode\", including changes while the app is open. Applies to every profile.")
 	a.tooltipForID(idTestA, "Send a short Xbox A-button pulse through the virtual controller. Initiate Xbox Controller must be active.")
 	a.tooltipForID(idTestCamLeft, "Force virtual Xbox Right Stick X fully left briefly. Useful for camera-output diagnostics.")
 	a.tooltipForID(idTestCamRight, "Force virtual Xbox Right Stick X fully right briefly. Useful for camera-output diagnostics.")
@@ -5603,6 +5622,7 @@ func (a *appState) createUI() {
 	a.fitContentBounds()
 	a.uiReady = true
 	a.updateContextVisibility()
+	a.applyTheme()
 	procSetTimer.Call(a.hwnd, 1, 100, 0)
 }
 
@@ -5696,6 +5716,10 @@ func (a *appState) populateCombos() {
 		a.comboAdd(idWheelPedal3Mode, mode)
 	}
 
+	a.comboReset(idTheme)
+	for _, label := range themeLabels {
+		a.comboAdd(idTheme, label)
+	}
 	a.comboReset(idPollingRate)
 	for _, hz := range pollingRateOptions {
 		a.comboAdd(idPollingRate, fmt.Sprintf("%d", hz))
@@ -5842,6 +5866,7 @@ func (a *appState) applyConfigToUI() {
 		}
 	}
 	comboSetIndex(idPollingRate, pidx)
+	comboSetIndex(idTheme, themeIndex(c.Theme))
 	setChecked(a.controls[idPreserve], c.PreserveThrust)
 	setChecked(a.controls[idMonitorDuringGameplay], c.MonitorDuringGameplay)
 	if a.uiReady {
@@ -6152,6 +6177,9 @@ func (a *appState) syncConfigFromUI() {
 	if pi >= 0 && pi < len(pollingRateOptions) {
 		c.PollingHz = pollingRateOptions[pi]
 	}
+	if ti := comboIndex(idTheme); ti >= 0 && ti < len(themeValues) {
+		c.Theme = themeValues[ti]
+	}
 	c.LeftInvert = isChecked(a.controls[idLeftInvert])
 	c.RightInvert = isChecked(a.controls[idRightInvert])
 	c.LeftThrottleMode = isChecked(a.controls[idLeftThrottleMode])
@@ -6248,6 +6276,12 @@ func (a *appState) onCommand(id, notify int) {
 		}
 	}
 	if a.applyingProfile {
+		return
+	}
+	if id == idTheme && notify == CBN_SELCHANGE {
+		a.syncConfigFromUI()
+		saveConfig()
+		a.applyTheme()
 		return
 	}
 	switch {
