@@ -71,13 +71,14 @@ func helpPanelWndProc(hwnd uintptr, message uint32, wParam, lParam uintptr) uint
 				procDeleteObject.Call(brush)
 			}
 		}
-		paint(bounds, mainBackgroundColor)
+		pal := currentPalette
+		paint(bounds, pal.Window)
 		if right > 10 && bottom > 10 {
-			paint(rect{Left: 4, Top: 4, Right: right, Bottom: bottom}, colorRGB(207, 207, 207))
-			paint(rect{Left: 2, Top: 2, Right: right - 2, Bottom: bottom - 2}, colorRGB(220, 220, 220))
+			paint(rect{Left: 4, Top: 4, Right: right, Bottom: bottom}, pal.HelpShadowOuter)
+			paint(rect{Left: 2, Top: 2, Right: right - 2, Bottom: bottom - 2}, pal.HelpShadowInner)
 			card := rect{Left: 0, Top: 0, Right: right - 5, Bottom: bottom - 5}
-			paint(card, colorRGB(255, 255, 255))
-			border, _, _ := procCreateSolidBrush.Call(colorRGB(199, 199, 199))
+			paint(card, pal.HelpCard)
+			border, _, _ := procCreateSolidBrush.Call(pal.HelpBorder)
 			if border != 0 {
 				procFrameRect.Call(dc, uintptr(unsafe.Pointer(&card)), border)
 				procDeleteObject.Call(border)
@@ -90,7 +91,7 @@ func helpPanelWndProc(hwnd uintptr, message uint32, wParam, lParam uintptr) uint
 					defer procSelectObject.Call(dc, old)
 				}
 				procSetBkMode.Call(dc, TRANSPARENT)
-				procSetTextColor.Call(dc, colorRGB(30, 30, 30))
+				procSetTextColor.Call(dc, pal.HelpText)
 				textBounds := rect{Left: 12, Top: 10, Right: right - 19, Bottom: bottom - 14}
 				procDrawTextW.Call(dc, uintptr(unsafe.Pointer(&chars[0])), n,
 					uintptr(unsafe.Pointer(&textBounds)), DT_LEFT|DT_WORDBREAK|DT_NOPREFIX)

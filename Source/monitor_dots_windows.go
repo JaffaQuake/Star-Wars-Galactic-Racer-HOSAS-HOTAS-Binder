@@ -84,7 +84,7 @@ func monitorDotWndProc(hwnd uintptr, message uint32, wParam, lParam uintptr) uin
 		// unevenly on some Windows renderers, leaving a side-only shadow.
 		// Fill a black outer ellipse and then an inset colored ellipse;
 		// the 2px-wide ring is fully inside the round indicator window.
-		outer, _, _ := procCreateSolidBrush.Call(colorRGB(0, 0, 0))
+		outer, _, _ := procCreateSolidBrush.Call(currentPalette.MonitorDotBorder)
 		inner, _, _ := procCreateSolidBrush.Call(monitorDotColor(id))
 		nullPen, _, _ := procGetStockObject.Call(monitorDotNullPenStockID)
 		if outer != 0 && inner != 0 && nullPen != 0 {

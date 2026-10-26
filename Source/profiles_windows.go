@@ -113,7 +113,9 @@ func (a *appState) loadProfiles() error {
 		return fmt.Errorf("profile data invalid; using previous settings, profiles file left untouched: %w", err)
 	}
 	a.profiles = loaded
+	theme := a.cfg.Theme // app-wide, not stored per profile
 	a.cfg = cloneProfileConfig(*loaded.Slots[loaded.Active-1])
+	a.cfg.Theme = theme
 	return nil
 }
 
@@ -212,6 +214,7 @@ func (a *appState) switchProfile(number int) {
 	} else {
 		next = cloneProfileConfig(*target)
 	}
+	next.Theme = current.Theme // the theme is app-wide, not per profile
 	a.profiles.Active = number
 	newSlot := cloneProfileConfig(next)
 	a.profiles.Slots[number-1] = &newSlot
