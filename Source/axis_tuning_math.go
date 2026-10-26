@@ -52,6 +52,8 @@ const (
 	profileTwist4         = "twist_4"
 	profileTwist5         = "twist_5"
 	profileTwist6         = "twist_6"
+	profileTwist7         = "twist_7"
+	profileTwist8         = "twist_8"
 	profileWheelSteering  = "wheel_steering"
 	profileWheelPedal1    = "wheel_pedal_1"
 	profileWheelPedal2    = "wheel_pedal_2"
@@ -82,6 +84,8 @@ var axisTuneNames = []axisTuneEntry{
 	{profileTwist4, "Additional Input 4", false, false},
 	{profileTwist5, "Additional Input 5", false, false},
 	{profileTwist6, "Additional Input 6", false, false},
+	{profileTwist7, "Additional Input 7", false, false},
+	{profileTwist8, "Additional Input 8", false, false},
 	{profileWheelSteering, "Wheel Steering", false, false},
 	{profileWheelPedal1, "Pedal 1 - Throttle", false, true},
 	{profileWheelPedal2, "Pedal 2 - Brake", false, true},

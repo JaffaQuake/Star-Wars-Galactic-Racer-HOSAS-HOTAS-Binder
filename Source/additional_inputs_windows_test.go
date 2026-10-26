@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// Additional Inputs 3-6 need their own controls; a shared ID would make
+// Additional Inputs 3-8 need their own controls; a shared ID would make
 // two rows edit the same setting.
 func TestAdditionalInputIDsAreUnique(t *testing.T) {
 	seen := map[int]string{}
@@ -34,8 +34,8 @@ func TestAdditionalInputsDefaultAndRoundTrip(t *testing.T) {
 			t.Fatalf("%s default %+v", auxiliaryInputName(slot), *v)
 		}
 	}
-	c.Twist6.Mode = "Move Camera"
-	c.Twist6.DIGUID = "guid-6"
+	c.Twist8.Mode = "Move Camera"
+	c.Twist8.DIGUID = "guid-8"
 	data, err := json.Marshal(c)
 	if err != nil {
 		t.Fatal(err)
@@ -44,12 +44,12 @@ func TestAdditionalInputsDefaultAndRoundTrip(t *testing.T) {
 	if err := json.Unmarshal(data, &back); err != nil {
 		t.Fatal(err)
 	}
-	if back.Twist6.Mode != "Move Camera" || back.Twist6.DIGUID != "guid-6" || back.Twist5.DIGUID != "" {
-		t.Fatalf("twist_6 round-trip lost settings: %+v", back.Twist6)
+	if back.Twist8.Mode != "Move Camera" || back.Twist8.DIGUID != "guid-8" || back.Twist7.DIGUID != "" {
+		t.Fatalf("twist_8 round-trip lost settings: %+v", back.Twist8)
 	}
 }
 
-// Profiles written before v2.2.4 have no twist_3 to twist_6. They must load as
+// Profiles written before v2.2.4 have no twist_3 to twist_8. They must load as
 // unassigned inputs rather than zero values that select WinMM device 0.
 func TestOlderProfilesGetUnassignedAdditionalInputs(t *testing.T) {
 	payload := `{"version":1,"active":1,"slots":[{"control_mode":"HOSAS","twist_left":{"device_id":2,"mode":"Pitch"}},null,null,null,null]}`
@@ -61,13 +61,13 @@ func TestOlderProfilesGetUnassignedAdditionalInputs(t *testing.T) {
 	if slot.TwistLeft.DeviceID != 2 || slot.TwistLeft.Mode != "Pitch" {
 		t.Fatalf("existing Additional Input 1 changed: %+v", slot.TwistLeft)
 	}
-	for _, v := range []auxiliaryAxisConfig{slot.Twist3, slot.Twist4, slot.Twist5, slot.Twist6} {
+	for _, v := range []auxiliaryAxisConfig{slot.Twist3, slot.Twist4, slot.Twist5, slot.Twist6, slot.Twist7, slot.Twist8} {
 		if v != defaultAuxiliaryAxis() {
 			t.Fatalf("missing Additional Input did not get defaults: %+v", v)
 		}
 	}
-	if _, ok := slot.Tuning[profileTwist6]; !ok {
-		t.Fatal("Additional Input 6 has no tuning profile")
+	if _, ok := slot.Tuning[profileTwist8]; !ok {
+		t.Fatal("Additional Input 8 has no tuning profile")
 	}
 }
 

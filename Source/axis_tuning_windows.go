@@ -386,6 +386,8 @@ func (p *axisTuningPopup) refreshEntriesFromConfig() {
 		profileTwist4:         {Enabled: picked(idTwist4Device, c.Twist4.DeviceID, c.Twist4.DIGUID) && c.Twist4.Mode != "Off", DigitalOnly: isTuningDigitalMode(c.Twist4.Mode), OneWay: normalizeAxisType(c.Twist4.AxisType) == "Lever"},
 		profileTwist5:         {Enabled: picked(idTwist5Device, c.Twist5.DeviceID, c.Twist5.DIGUID) && c.Twist5.Mode != "Off", DigitalOnly: isTuningDigitalMode(c.Twist5.Mode), OneWay: normalizeAxisType(c.Twist5.AxisType) == "Lever"},
 		profileTwist6:         {Enabled: picked(idTwist6Device, c.Twist6.DeviceID, c.Twist6.DIGUID) && c.Twist6.Mode != "Off", DigitalOnly: isTuningDigitalMode(c.Twist6.Mode), OneWay: normalizeAxisType(c.Twist6.AxisType) == "Lever"},
+		profileTwist7:         {Enabled: picked(idTwist7Device, c.Twist7.DeviceID, c.Twist7.DIGUID) && c.Twist7.Mode != "Off", DigitalOnly: isTuningDigitalMode(c.Twist7.Mode), OneWay: normalizeAxisType(c.Twist7.AxisType) == "Lever"},
+		profileTwist8:         {Enabled: picked(idTwist8Device, c.Twist8.DeviceID, c.Twist8.DIGUID) && c.Twist8.Mode != "Off", DigitalOnly: isTuningDigitalMode(c.Twist8.Mode), OneWay: normalizeAxisType(c.Twist8.AxisType) == "Lever"},
 		profileWheelSteering:  {Enabled: picked(idWheelDevice, c.DrivingWheel.Wheel.DeviceID, c.DrivingWheel.Wheel.DIGUID)},
 		profileWheelPedal1:    {Enabled: picked(idWheelPedal1Device, c.DrivingWheel.Pedal1.DeviceID, c.DrivingWheel.Pedal1.DIGUID)},
 		profileWheelPedal2:    {Enabled: picked(idWheelPedal2Device, c.DrivingWheel.Pedal2.DeviceID, c.DrivingWheel.Pedal2.DIGUID)},
@@ -595,6 +597,8 @@ func (p *axisTuningPopup) applyDraft() {
 	app.cfg.Twist4.Deadzone = app.cfg.Tuning[profileTwist4].Deadzone
 	app.cfg.Twist5.Deadzone = app.cfg.Tuning[profileTwist5].Deadzone
 	app.cfg.Twist6.Deadzone = app.cfg.Tuning[profileTwist6].Deadzone
+	app.cfg.Twist7.Deadzone = app.cfg.Tuning[profileTwist7].Deadzone
+	app.cfg.Twist8.Deadzone = app.cfg.Tuning[profileTwist8].Deadzone
 	app.cfgMu.Unlock()
 	// Save to memory on every edit and commit the JSON after the slider settles.
 	app.tuningDirty = true
@@ -639,7 +643,7 @@ func (p *axisTuningPopup) command(id, notify int) {
 			key, _, _ := p.entry()
 			dz := 0
 			switch key {
-			case profileHOSASLeft, profileHOSASRight, profileHOTASX, profileHOTASY, profilePedal, profileTwistLeft, profileTwistRight, profileTwist3, profileTwist4, profileTwist5, profileTwist6:
+			case profileHOSASLeft, profileHOSASRight, profileHOTASX, profileHOTASY, profilePedal, profileTwistLeft, profileTwistRight, profileTwist3, profileTwist4, profileTwist5, profileTwist6, profileTwist7, profileTwist8:
 				dz = 6
 			}
 			p.draft[key] = defaultAxisTune(dz)
@@ -861,6 +865,10 @@ func (p *axisTuningPopup) refreshLiveInput() {
 			aux = &c.Twist5
 		case profileTwist6:
 			aux = &c.Twist6
+		case profileTwist7:
+			aux = &c.Twist7
+		case profileTwist8:
+			aux = &c.Twist8
 		case profileWheelSteering:
 			guid, id, axis, invert = c.DrivingWheel.Wheel.DIGUID, c.DrivingWheel.Wheel.DeviceID, c.DrivingWheel.Wheel.Axis, c.DrivingWheel.Wheel.Invert
 		case profileWheelPedal1:
@@ -921,6 +929,10 @@ func isTuningDigitalModeForEntry(key, mode string, c config) bool {
 		return isTuningDigitalMode(c.Twist5.Mode)
 	case profileTwist6:
 		return isTuningDigitalMode(c.Twist6.Mode)
+	case profileTwist7:
+		return isTuningDigitalMode(c.Twist7.Mode)
+	case profileTwist8:
+		return isTuningDigitalMode(c.Twist8.Mode)
 	case profileWheelPedal3:
 		return isTuningDigitalMode(c.DrivingWheel.Pedal3Mode)
 	case profileWheelHandbrake:

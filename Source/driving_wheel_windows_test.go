@@ -83,7 +83,7 @@ func TestWheelAxisMenusAreIsolated(t *testing.T) {
 			t.Fatalf("wrong-mode axis visible %s", entry.Key)
 		}
 	}
-	for _, key := range []string{profileWheelSteering, profileWheelPedal1, profileWheelPedal2, profileWheelPedal3, profileWheelHandbrake, profileTwistLeft, profileTwistRight, profileTwist3, profileTwist4, profileTwist5, profileTwist6} {
+	for _, key := range []string{profileWheelSteering, profileWheelPedal1, profileWheelPedal2, profileWheelPedal3, profileWheelHandbrake, profileTwistLeft, profileTwistRight, profileTwist3, profileTwist4, profileTwist5, profileTwist6, profileTwist7, profileTwist8} {
 		if !found[key] {
 			t.Fatalf("missing tuning profile %s", key)
 		}

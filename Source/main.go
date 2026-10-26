@@ -361,6 +361,36 @@ const (
 	idTwist4ButtonThreshold
 	idTwist5ButtonThreshold
 	idTwist6ButtonThreshold
+	// Additional Inputs 7 and 8, in auxiliaryIDs order. The next ID must stay
+	// below idLearnBase (1200).
+	idTwist7Device
+	idTwist7Axis
+	idTwist7Invert
+	idTwist7AxisType
+	idTwist7Deadzone
+	idTwist7Mode
+	idTwist7Strength
+	idTwist7CameraSensitivity
+	idTwist7CameraDeadzone
+	idTwist7LeftKey
+	idTwist7RightKey
+	idTwist7KeyThreshold
+	idTwist7OutputNegative
+	idTwist7ButtonThreshold
+	idTwist8Device
+	idTwist8Axis
+	idTwist8Invert
+	idTwist8AxisType
+	idTwist8Deadzone
+	idTwist8Mode
+	idTwist8Strength
+	idTwist8CameraSensitivity
+	idTwist8CameraDeadzone
+	idTwist8LeftKey
+	idTwist8RightKey
+	idTwist8KeyThreshold
+	idTwist8OutputNegative
+	idTwist8ButtonThreshold
 	idMappingsTab    = 1720
 	idCalibrationTab = 1721
 	idRightPanelTabs = 1722
@@ -546,25 +576,28 @@ type auxiliaryAxisConfig struct {
 	ButtonThreshold int `json:"button_threshold"`
 }
 
-// Additional Inputs 1-6. Inputs 1 and 2 keep their original twist_left /
+// Additional Inputs 1-8. Inputs 1 and 2 keep their original twist_left /
 // twist_right settings so existing configuration files load unchanged.
-const auxiliaryInputCount = 6
+const auxiliaryInputCount = 8
 
-// Additional Inputs 1 and 2 fit the original layout; each extra input row
-// moves every control below the Additional Analogue Inputs area down.
+// The Additional Inputs scroll inside a section auxiliaryVisibleRows rows
+// tall. Two rows is the space Inputs 1 and 2 originally used, so controls
+// below it move down only by the margin under the section.
 const (
-	auxiliaryRowPitch   = 78
-	auxiliaryExtraShift = (auxiliaryInputCount - 2) * auxiliaryRowPitch
+	auxiliaryRowPitch    = 78
+	auxiliaryVisibleRows = 2
+	auxiliaryPanelMargin = 8
+	auxiliaryExtraShift  = (auxiliaryVisibleRows-2)*auxiliaryRowPitch + auxiliaryPanelMargin
 )
 
-var auxiliaryProfileKeys = [auxiliaryInputCount]string{profileTwistLeft, profileTwistRight, profileTwist3, profileTwist4, profileTwist5, profileTwist6}
+var auxiliaryProfileKeys = [auxiliaryInputCount]string{profileTwistLeft, profileTwistRight, profileTwist3, profileTwist4, profileTwist5, profileTwist6, profileTwist7, profileTwist8}
 
 func auxiliaryInputName(slot int) string {
 	return fmt.Sprintf("Additional Input %d", slot+1)
 }
 
 func (c *config) auxiliaryAxes() [auxiliaryInputCount]*auxiliaryAxisConfig {
-	return [auxiliaryInputCount]*auxiliaryAxisConfig{&c.TwistLeft, &c.TwistRight, &c.Twist3, &c.Twist4, &c.Twist5, &c.Twist6}
+	return [auxiliaryInputCount]*auxiliaryAxisConfig{&c.TwistLeft, &c.TwistRight, &c.Twist3, &c.Twist4, &c.Twist5, &c.Twist6, &c.Twist7, &c.Twist8}
 }
 
 func defaultAuxiliaryAxis() auxiliaryAxisConfig {
@@ -657,6 +690,10 @@ func initAxisProfiles(c *config) {
 			dz = c.Twist5.Deadzone
 		case profileTwist6:
 			dz = c.Twist6.Deadzone
+		case profileTwist7:
+			dz = c.Twist7.Deadzone
+		case profileTwist8:
+			dz = c.Twist8.Deadzone
 		}
 		c.Tuning[entry.Key] = defaultAxisTune(dz)
 	}
@@ -781,6 +818,8 @@ type config struct {
 	Twist4                 auxiliaryAxisConfig        `json:"twist_4"`
 	Twist5                 auxiliaryAxisConfig        `json:"twist_5"`
 	Twist6                 auxiliaryAxisConfig        `json:"twist_6"`
+	Twist7                 auxiliaryAxisConfig        `json:"twist_7"`
+	Twist8                 auxiliaryAxisConfig        `json:"twist_8"`
 	LeftAxis               int                        `json:"left_axis"`
 	RightAxis              int                        `json:"right_axis"`
 	PedalAxis              int                        `json:"pedal_axis"`
@@ -1608,6 +1647,7 @@ type appState struct {
 	tooltipHelp              map[uintptr]string
 	tooltipPopup             uintptr // legacy field; v1.96 renders help inside the main window
 	tooltipHover             uintptr
+	auxPanel                 *auxInputPanel
 	comboOptions             map[int][]string
 	comboSelected            map[int]int
 	baseRects                map[uintptr]rect
@@ -2387,6 +2427,7 @@ func defaultConfig() config {
 		TwistLeft: defaultAuxiliaryAxis(), TwistRight: defaultAuxiliaryAxis(),
 		Twist3: defaultAuxiliaryAxis(), Twist4: defaultAuxiliaryAxis(),
 		Twist5: defaultAuxiliaryAxis(), Twist6: defaultAuxiliaryAxis(),
+		Twist7: defaultAuxiliaryAxis(), Twist8: defaultAuxiliaryAxis(),
 		LeftAxis: 1, RightAxis: 1, PedalAxis: 0,
 		PedalMode: "Off", Deadzone: 6,
 		PreserveThrust:         true,
@@ -2585,6 +2626,8 @@ func loadConfig(c *config) {
 		validateAuxiliaryAxis(&tmp.Twist4, rawKeys["twist_4"] != nil, maxAxis)
 		validateAuxiliaryAxis(&tmp.Twist5, rawKeys["twist_5"] != nil, maxAxis)
 		validateAuxiliaryAxis(&tmp.Twist6, rawKeys["twist_6"] != nil, maxAxis)
+		validateAuxiliaryAxis(&tmp.Twist7, rawKeys["twist_7"] != nil, maxAxis)
+		validateAuxiliaryAxis(&tmp.Twist8, rawKeys["twist_8"] != nil, maxAxis)
 		tmp.PedalMode = normalizePedalMode(tmp.PedalMode)
 		tmp.Bindings = normalizeBindingMap(tmp.Bindings)
 		*c = tmp
@@ -2718,6 +2761,12 @@ func loadConfig(c *config) {
 	if b, ok := raw["twist_6"]; ok {
 		_ = json.Unmarshal(b, &d.Twist6)
 	}
+	if b, ok := raw["twist_7"]; ok {
+		_ = json.Unmarshal(b, &d.Twist7)
+	}
+	if b, ok := raw["twist_8"]; ok {
+		_ = json.Unmarshal(b, &d.Twist8)
+	}
 	maxAuxAxis := 7
 	if normalizeInputBackend(d.InputBackend) == "WinMM" {
 		maxAuxAxis = 5
@@ -2728,6 +2777,8 @@ func loadConfig(c *config) {
 	validateAuxiliaryAxis(&d.Twist4, raw["twist_4"] != nil, maxAuxAxis)
 	validateAuxiliaryAxis(&d.Twist5, raw["twist_5"] != nil, maxAuxAxis)
 	validateAuxiliaryAxis(&d.Twist6, raw["twist_6"] != nil, maxAuxAxis)
+	validateAuxiliaryAxis(&d.Twist7, raw["twist_7"] != nil, maxAuxAxis)
+	validateAuxiliaryAxis(&d.Twist8, raw["twist_8"] != nil, maxAuxAxis)
 	d.PedalMode = normalizePedalMode(d.PedalMode)
 	d.OnFootMode = normalizeOnFootMode(d.OnFootMode)
 	if b, ok := raw["bindings"]; ok {
@@ -4428,7 +4479,7 @@ func wndProc(hwnd uintptr, message uint32, wParam, lParam uintptr) uintptr {
 		}
 	case WM_MOUSEWHEEL:
 		app.closeCombo(false)
-		app.handleMouseWheel(wParam)
+		app.routeMouseWheel(wParam, lParam)
 		return 0
 	case WM_SIZE:
 		app.closeCombo(false)
@@ -4491,12 +4542,27 @@ func wndProc(hwnd uintptr, message uint32, wParam, lParam uintptr) uintptr {
 }
 
 func (a *appState) createControl(class, text string, style uintptr, x, y, w, h, id int) uintptr {
-	ctrl, _, _ := procCreateWindowExW.Call(0, uintptr(unsafe.Pointer(utf16ptr(class))), uintptr(unsafe.Pointer(utf16ptr(text))), style, uintptr(x), uintptr(y), uintptr(w), uintptr(h), a.hwnd, uintptr(id), 0, 0)
+	parent := a.hwnd
+	inAuxPanel := a.auxPanel != nil && a.auxPanel.creating
+	if inAuxPanel {
+		// Callers keep using main-window coordinates.
+		parent = a.auxPanel.hwnd
+		x -= a.auxPanel.originX
+		y -= a.auxPanel.originY
+	}
+	ctrl, _, _ := procCreateWindowExW.Call(0, uintptr(unsafe.Pointer(utf16ptr(class))), uintptr(unsafe.Pointer(utf16ptr(text))), style, uintptr(x), uintptr(y), uintptr(w), uintptr(h), parent, uintptr(id), 0, 0)
 	if ctrl != 0 && a.font != 0 {
 		procSendMessageW.Call(ctrl, WM_SETFONT, a.font, 1)
 	}
 	if id != 0 {
 		a.controls[id] = ctrl
+	}
+	if inAuxPanel {
+		// The section scrolls these; the main window's layout never moves them.
+		if ctrl != 0 {
+			a.auxPanel.rects[ctrl] = rect{Left: int32(x), Top: int32(y), Right: int32(x + w), Bottom: int32(y + h)}
+		}
+		return ctrl
 	}
 	if ctrl != 0 && a.baseRects != nil {
 		a.baseRects[ctrl] = rect{Left: int32(x), Top: int32(y), Right: int32(x + w), Bottom: int32(y + h)}
@@ -4547,7 +4613,8 @@ func (a *appState) createCombo(x, y, w, h, id int) uintptr {
 	ctrl := a.createControl("COMBOBOX", "", WS_CHILD|WS_VISIBLE|WS_TABSTOP|WS_VSCROLL|CBS_DROPDOWNLIST, x, y, w, popupHeight, id)
 	// COMBOBOX CreateWindow height includes the open dropdown; virtual scroll
 	// dimensions should use only the collapsed selector (not its floating list).
-	if ctrl != 0 {
+	// Additional Inputs rows are laid out by their scrolling section instead.
+	if _, inMainLayout := a.baseRects[ctrl]; ctrl != 0 && inMainLayout {
 		a.baseRects[ctrl] = rect{Left: int32(x), Top: int32(y), Right: int32(x + w), Bottom: int32(y + 26)}
 	}
 	return ctrl
@@ -4630,7 +4697,7 @@ func (a *appState) updateHoverTooltip() {
 	var hovered uintptr
 	help := ""
 	for h, text := range a.tooltipHelp {
-		if vis, _, _ := procIsWindowVisible.Call(h); vis == 0 {
+		if vis, _, _ := procIsWindowVisible.Call(h); vis == 0 || a.hiddenInAuxPanel(h, pt) {
 			continue
 		}
 		var rc rect
@@ -5572,10 +5639,15 @@ func (a *appState) createUI() {
 		beforeExtra[h] = true
 	}
 	a.createLabel("Additional Analogue Inputs", 20, 178, 220, 22)
+	a.createLabel(fmt.Sprintf("Scroll the box for all %d inputs", auxiliaryInputCount), 245, 178, 260, 22)
+	// The rows scroll inside a bordered section in the space Inputs 1 and 2
+	// used to fill; each row keeps its original main-window coordinates.
+	a.createAuxInputPanel(14, 203, 1115, auxiliaryVisibleRows*auxiliaryRowPitch+2)
 	for slot := 0; slot < auxiliaryInputCount; slot++ {
 		y := 207 + slot*auxiliaryRowPitch
 		a.createTwistUI(slot, y, y+37)
 	}
+	a.finishAuxInputPanel(auxiliaryInputCount * auxiliaryRowPitch)
 	for h := range a.baseRects {
 		if !beforeExtra[h] {
 			a.drivingShiftHandles = append(a.drivingShiftHandles, h)
@@ -5792,7 +5864,7 @@ func (a *appState) populateCombos() {
 	backend := normalizeInputBackend(a.cfg.InputBackend)
 	a.cfgMu.RUnlock()
 
-	deviceIDs := []int{idLeftDevice, idRightDevice, idPedalDevice, idHotasThrottleDevice, idHotasStickDevice, idTwistLeftDevice, idTwistRightDevice, idTwist3Device, idTwist4Device, idTwist5Device, idTwist6Device, idWheelDevice, idWheelPedal1Device, idWheelPedal2Device, idWheelPedal3Device}
+	deviceIDs := []int{idLeftDevice, idRightDevice, idPedalDevice, idHotasThrottleDevice, idHotasStickDevice, idTwistLeftDevice, idTwistRightDevice, idTwist3Device, idTwist4Device, idTwist5Device, idTwist6Device, idTwist7Device, idTwist8Device, idWheelDevice, idWheelPedal1Device, idWheelPedal2Device, idWheelPedal3Device}
 	if backend == "WinMM" {
 		a.devicesMu.RLock()
 		devs := append([]deviceInfo(nil), a.devices...)
@@ -5833,7 +5905,7 @@ func (a *appState) populateCombos() {
 	if backend != "WinMM" {
 		axisList = diAxisNames
 	}
-	for _, id := range []int{idLeftAxis, idRightAxis, idPedalAxis, idHotasThrottleAxis, idHotasStickXAxis, idHotasStickYAxis, idTwistLeftAxis, idTwistRightAxis, idTwist3Axis, idTwist4Axis, idTwist5Axis, idTwist6Axis, idWheelAxis, idWheelPedal1Axis, idWheelPedal2Axis, idWheelPedal3Axis} {
+	for _, id := range []int{idLeftAxis, idRightAxis, idPedalAxis, idHotasThrottleAxis, idHotasStickXAxis, idHotasStickYAxis, idTwistLeftAxis, idTwistRightAxis, idTwist3Axis, idTwist4Axis, idTwist5Axis, idTwist6Axis, idTwist7Axis, idTwist8Axis, idWheelAxis, idWheelPedal1Axis, idWheelPedal2Axis, idWheelPedal3Axis} {
 		a.comboReset(id)
 		for _, name := range axisList {
 			a.comboAdd(id, name)
@@ -5860,13 +5932,13 @@ func (a *appState) populateCombos() {
 		a.comboAdd(idPedalMode, mode)
 	}
 
-	for _, id := range []int{idTwistLeftAxisType, idTwistRightAxisType, idTwist3AxisType, idTwist4AxisType, idTwist5AxisType, idTwist6AxisType} {
+	for _, id := range []int{idTwistLeftAxisType, idTwistRightAxisType, idTwist3AxisType, idTwist4AxisType, idTwist5AxisType, idTwist6AxisType, idTwist7AxisType, idTwist8AxisType} {
 		a.comboReset(id)
 		for _, name := range []string{"Centered", "Lever"} {
 			a.comboAdd(id, name)
 		}
 	}
-	for _, id := range []int{idTwistLeftMode, idTwistRightMode, idTwist3Mode, idTwist4Mode, idTwist5Mode, idTwist6Mode} {
+	for _, id := range []int{idTwistLeftMode, idTwistRightMode, idTwist3Mode, idTwist4Mode, idTwist5Mode, idTwist6Mode, idTwist7Mode, idTwist8Mode} {
 		a.comboReset(id)
 		for _, mode := range []string{"Off", "Fine steering", "Move Camera", "Pitch", "Keyboard keys", "Boost/Drift"} {
 			a.comboAdd(id, mode)
@@ -5881,7 +5953,7 @@ func (a *appState) populateCombos() {
 	for _, hz := range pollingRateOptions {
 		a.comboAdd(idPollingRate, fmt.Sprintf("%d", hz))
 	}
-	for _, id := range []int{idPedalLeftKey, idPedalRightKey, idTwistLeftLeftKey, idTwistLeftRightKey, idTwistRightLeftKey, idTwistRightRightKey, idTwist3LeftKey, idTwist3RightKey, idTwist4LeftKey, idTwist4RightKey, idTwist5LeftKey, idTwist5RightKey, idTwist6LeftKey, idTwist6RightKey} {
+	for _, id := range []int{idPedalLeftKey, idPedalRightKey, idTwistLeftLeftKey, idTwistLeftRightKey, idTwistRightLeftKey, idTwistRightRightKey, idTwist3LeftKey, idTwist3RightKey, idTwist4LeftKey, idTwist4RightKey, idTwist5LeftKey, idTwist5RightKey, idTwist6LeftKey, idTwist6RightKey, idTwist7LeftKey, idTwist7RightKey, idTwist8LeftKey, idTwist8RightKey} {
 		a.comboReset(id)
 		for _, k := range keyboardKeyOptions {
 			a.comboAdd(id, k.Name)
@@ -5925,6 +5997,8 @@ func (a *appState) applyConfigToUI() {
 		comboSetDevice(idTwist4Device, c.Twist4.DeviceID)
 		comboSetDevice(idTwist5Device, c.Twist5.DeviceID)
 		comboSetDevice(idTwist6Device, c.Twist6.DeviceID)
+		comboSetDevice(idTwist7Device, c.Twist7.DeviceID)
+		comboSetDevice(idTwist8Device, c.Twist8.DeviceID)
 	} else {
 		comboSetGUID(idHotasThrottleDevice, c.HotasThrottleDIGUID)
 		comboSetGUID(idHotasStickDevice, c.HotasStickDIGUID)
@@ -5941,6 +6015,8 @@ func (a *appState) applyConfigToUI() {
 		comboSetGUID(idTwist4Device, c.Twist4.DIGUID)
 		comboSetGUID(idTwist5Device, c.Twist5.DIGUID)
 		comboSetGUID(idTwist6Device, c.Twist6.DIGUID)
+		comboSetGUID(idTwist7Device, c.Twist7.DIGUID)
+		comboSetGUID(idTwist8Device, c.Twist8.DIGUID)
 	}
 	comboSetIndex(idHotasThrottleAxis, c.HotasThrottleAxis)
 	setChecked(a.controls[idHotasThrottleInvert], c.HotasThrottleInvert)
@@ -6102,8 +6178,12 @@ func auxiliaryIDs(slot int) []int {
 		return []int{idTwist4Device, idTwist4Axis, idTwist4Invert, idTwist4AxisType, idTwist4Deadzone, idTwist4Mode, idTwist4Strength, idTwist4CameraSensitivity, idTwist4CameraDeadzone, idTwist4LeftKey, idTwist4RightKey, idTwist4KeyThreshold, idTwist4OutputNegative, idTwist4ButtonThreshold}
 	case 4:
 		return []int{idTwist5Device, idTwist5Axis, idTwist5Invert, idTwist5AxisType, idTwist5Deadzone, idTwist5Mode, idTwist5Strength, idTwist5CameraSensitivity, idTwist5CameraDeadzone, idTwist5LeftKey, idTwist5RightKey, idTwist5KeyThreshold, idTwist5OutputNegative, idTwist5ButtonThreshold}
+	case 5:
+		return []int{idTwist6Device, idTwist6Axis, idTwist6Invert, idTwist6AxisType, idTwist6Deadzone, idTwist6Mode, idTwist6Strength, idTwist6CameraSensitivity, idTwist6CameraDeadzone, idTwist6LeftKey, idTwist6RightKey, idTwist6KeyThreshold, idTwist6OutputNegative, idTwist6ButtonThreshold}
+	case 6:
+		return []int{idTwist7Device, idTwist7Axis, idTwist7Invert, idTwist7AxisType, idTwist7Deadzone, idTwist7Mode, idTwist7Strength, idTwist7CameraSensitivity, idTwist7CameraDeadzone, idTwist7LeftKey, idTwist7RightKey, idTwist7KeyThreshold, idTwist7OutputNegative, idTwist7ButtonThreshold}
 	}
-	return []int{idTwist6Device, idTwist6Axis, idTwist6Invert, idTwist6AxisType, idTwist6Deadzone, idTwist6Mode, idTwist6Strength, idTwist6CameraSensitivity, idTwist6CameraDeadzone, idTwist6LeftKey, idTwist6RightKey, idTwist6KeyThreshold, idTwist6OutputNegative, idTwist6ButtonThreshold}
+	return []int{idTwist8Device, idTwist8Axis, idTwist8Invert, idTwist8AxisType, idTwist8Deadzone, idTwist8Mode, idTwist8Strength, idTwist8CameraSensitivity, idTwist8CameraDeadzone, idTwist8LeftKey, idTwist8RightKey, idTwist8KeyThreshold, idTwist8OutputNegative, idTwist8ButtonThreshold}
 }
 
 // auxiliarySlotForID returns the Additional Input whose auxiliaryIDs entry
