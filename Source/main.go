@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strconv"
 	"strings"
@@ -3062,6 +3063,11 @@ func saveConfig() {
 		return
 	}
 	p := configPath()
+	// Keep settings this build doesn't know, such as ones written by a newer
+	// version or another branch's build, instead of dropping them.
+	if old, err := os.ReadFile(p); err == nil {
+		data = keepUnknownSettings(data, old, reflect.TypeOf(c))
+	}
 	tmp := p + ".tmp"
 	if os.WriteFile(tmp, data, 0644) == nil {
 		_ = os.Remove(p)

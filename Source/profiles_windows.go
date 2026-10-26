@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 )
 
 // Profile slots are independent complete configuration snapshots. The active
@@ -162,6 +163,10 @@ func (a *appState) persistProfiles(active config) error {
 		return err
 	}
 	path := profilesFilePath()
+	// Keep each profile's settings that this build doesn't know (see saveConfig).
+	if old, err := os.ReadFile(path); err == nil {
+		contents = keepUnknownSettings(contents, old, reflect.TypeOf(*p))
+	}
 	tmp := path + ".tmp"
 	if err = os.WriteFile(tmp, contents, 0644); err != nil {
 		return err
