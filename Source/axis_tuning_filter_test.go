@@ -30,7 +30,7 @@ func TestFilterAxisTuningForAssignedActiveDigital(t *testing.T) {
 	}
 }
 func TestTuningDigitalModeAndLeverBehavior(t *testing.T) {
-	for _, mode := range []string{"Boost", "Drift", "Boost/Drift", "Keyboard keys"} {
+	for _, mode := range []string{"Boost", "Drift", "Boost/Drift", "Boost/Boost", "Drift/Drift", "Keyboard keys"} {
 		if !isTuningDigitalMode(mode) {
 			t.Errorf("%s should be digital", mode)
 		}

@@ -382,6 +382,12 @@ func (p *axisTuningPopup) refreshEntriesFromConfig() {
 		profilePedal:          {Enabled: picked(idPedalDevice, c.PedalID, c.PedalDIGUID) && c.PedalMode != "Off", DigitalOnly: isTuningDigitalMode(c.PedalMode)},
 		profileTwistLeft:      {Enabled: picked(idTwistLeftDevice, c.TwistLeft.DeviceID, c.TwistLeft.DIGUID) && c.TwistLeft.Mode != "Off", DigitalOnly: isTuningDigitalMode(c.TwistLeft.Mode), OneWay: normalizeAxisType(c.TwistLeft.AxisType) == "Lever"},
 		profileTwistRight:     {Enabled: picked(idTwistRightDevice, c.TwistRight.DeviceID, c.TwistRight.DIGUID) && c.TwistRight.Mode != "Off", DigitalOnly: isTuningDigitalMode(c.TwistRight.Mode), OneWay: normalizeAxisType(c.TwistRight.AxisType) == "Lever"},
+		profileTwist3:         {Enabled: picked(idTwist3Device, c.Twist3.DeviceID, c.Twist3.DIGUID) && c.Twist3.Mode != "Off", DigitalOnly: isTuningDigitalMode(c.Twist3.Mode), OneWay: normalizeAxisType(c.Twist3.AxisType) == "Lever"},
+		profileTwist4:         {Enabled: picked(idTwist4Device, c.Twist4.DeviceID, c.Twist4.DIGUID) && c.Twist4.Mode != "Off", DigitalOnly: isTuningDigitalMode(c.Twist4.Mode), OneWay: normalizeAxisType(c.Twist4.AxisType) == "Lever"},
+		profileTwist5:         {Enabled: picked(idTwist5Device, c.Twist5.DeviceID, c.Twist5.DIGUID) && c.Twist5.Mode != "Off", DigitalOnly: isTuningDigitalMode(c.Twist5.Mode), OneWay: normalizeAxisType(c.Twist5.AxisType) == "Lever"},
+		profileTwist6:         {Enabled: picked(idTwist6Device, c.Twist6.DeviceID, c.Twist6.DIGUID) && c.Twist6.Mode != "Off", DigitalOnly: isTuningDigitalMode(c.Twist6.Mode), OneWay: normalizeAxisType(c.Twist6.AxisType) == "Lever"},
+		profileTwist7:         {Enabled: picked(idTwist7Device, c.Twist7.DeviceID, c.Twist7.DIGUID) && c.Twist7.Mode != "Off", DigitalOnly: isTuningDigitalMode(c.Twist7.Mode), OneWay: normalizeAxisType(c.Twist7.AxisType) == "Lever"},
+		profileTwist8:         {Enabled: picked(idTwist8Device, c.Twist8.DeviceID, c.Twist8.DIGUID) && c.Twist8.Mode != "Off", DigitalOnly: isTuningDigitalMode(c.Twist8.Mode), OneWay: normalizeAxisType(c.Twist8.AxisType) == "Lever"},
 		profileWheelSteering:  {Enabled: picked(idWheelDevice, c.DrivingWheel.Wheel.DeviceID, c.DrivingWheel.Wheel.DIGUID)},
 		profileWheelPedal1:    {Enabled: picked(idWheelPedal1Device, c.DrivingWheel.Pedal1.DeviceID, c.DrivingWheel.Pedal1.DIGUID)},
 		profileWheelPedal2:    {Enabled: picked(idWheelPedal2Device, c.DrivingWheel.Pedal2.DeviceID, c.DrivingWheel.Pedal2.DIGUID)},
@@ -587,6 +593,12 @@ func (p *axisTuningPopup) applyDraft() {
 	app.cfg.Deadzone = app.cfg.Tuning[profileHOSASLeft].Deadzone
 	app.cfg.TwistLeft.Deadzone = app.cfg.Tuning[profileTwistLeft].Deadzone
 	app.cfg.TwistRight.Deadzone = app.cfg.Tuning[profileTwistRight].Deadzone
+	app.cfg.Twist3.Deadzone = app.cfg.Tuning[profileTwist3].Deadzone
+	app.cfg.Twist4.Deadzone = app.cfg.Tuning[profileTwist4].Deadzone
+	app.cfg.Twist5.Deadzone = app.cfg.Tuning[profileTwist5].Deadzone
+	app.cfg.Twist6.Deadzone = app.cfg.Tuning[profileTwist6].Deadzone
+	app.cfg.Twist7.Deadzone = app.cfg.Tuning[profileTwist7].Deadzone
+	app.cfg.Twist8.Deadzone = app.cfg.Tuning[profileTwist8].Deadzone
 	app.cfgMu.Unlock()
 	// Save to memory on every edit and commit the JSON after the slider settles.
 	app.tuningDirty = true
@@ -631,7 +643,7 @@ func (p *axisTuningPopup) command(id, notify int) {
 			key, _, _ := p.entry()
 			dz := 0
 			switch key {
-			case profileHOSASLeft, profileHOSASRight, profileHOTASX, profileHOTASY, profilePedal, profileTwistLeft, profileTwistRight:
+			case profileHOSASLeft, profileHOSASRight, profileHOTASX, profileHOTASY, profilePedal, profileTwistLeft, profileTwistRight, profileTwist3, profileTwist4, profileTwist5, profileTwist6, profileTwist7, profileTwist8:
 				dz = 6
 			}
 			p.draft[key] = defaultAxisTune(dz)
@@ -813,6 +825,9 @@ func (p *axisTuningPopup) refreshLiveInput() {
 		if time.Since(m.LastUpdate) < 500*time.Millisecond {
 			if key == profileHOSASThrust {
 				v = calculateDrive(m.Left, m.Right, c.PreserveThrust)
+				if normalizeControlMode(c.ControlMode) == "HOSAS" {
+					v = hosasDrive(m.Left, m.Right, v, c.LeftAvoidDrive, c.RightAvoidDrive)
+				}
 			} else {
 				v = clamp(m.Left-m.Right, -1, 1)
 			}
@@ -842,6 +857,18 @@ func (p *axisTuningPopup) refreshLiveInput() {
 			aux = &c.TwistLeft
 		case profileTwistRight:
 			aux = &c.TwistRight
+		case profileTwist3:
+			aux = &c.Twist3
+		case profileTwist4:
+			aux = &c.Twist4
+		case profileTwist5:
+			aux = &c.Twist5
+		case profileTwist6:
+			aux = &c.Twist6
+		case profileTwist7:
+			aux = &c.Twist7
+		case profileTwist8:
+			aux = &c.Twist8
 		case profileWheelSteering:
 			guid, id, axis, invert = c.DrivingWheel.Wheel.DIGUID, c.DrivingWheel.Wheel.DeviceID, c.DrivingWheel.Wheel.Axis, c.DrivingWheel.Wheel.Invert
 		case profileWheelPedal1:
@@ -894,6 +921,18 @@ func isTuningDigitalModeForEntry(key, mode string, c config) bool {
 		return isTuningDigitalMode(c.TwistLeft.Mode)
 	case profileTwistRight:
 		return isTuningDigitalMode(c.TwistRight.Mode)
+	case profileTwist3:
+		return isTuningDigitalMode(c.Twist3.Mode)
+	case profileTwist4:
+		return isTuningDigitalMode(c.Twist4.Mode)
+	case profileTwist5:
+		return isTuningDigitalMode(c.Twist5.Mode)
+	case profileTwist6:
+		return isTuningDigitalMode(c.Twist6.Mode)
+	case profileTwist7:
+		return isTuningDigitalMode(c.Twist7.Mode)
+	case profileTwist8:
+		return isTuningDigitalMode(c.Twist8.Mode)
 	case profileWheelPedal3:
 		return isTuningDigitalMode(c.DrivingWheel.Pedal3Mode)
 	case profileWheelHandbrake:

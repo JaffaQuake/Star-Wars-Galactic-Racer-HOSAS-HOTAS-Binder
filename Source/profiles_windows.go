@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 )
 
 // Profile slots are independent complete configuration snapshots. The active
@@ -80,11 +81,36 @@ func readProfileCollection(data []byte) (profileCollection, error) {
 			return profileCollection{}, fmt.Errorf("invalid cycle binding kind")
 		}
 	}
+	// Slots saved before Additional Inputs 3-8 existed have no twist_3 to
+	// twist_8 objects. Give those the new-install defaults, not zero values
+	// (a zero DeviceID would select the first WinMM device).
+	var rawSlots struct {
+		Slots [profileCount]map[string]json.RawMessage `json:"slots"`
+	}
+	_ = json.Unmarshal(data, &rawSlots)
 	for i, slot := range p.Slots {
 		if slot != nil {
 			copied := cloneProfileConfig(*slot)
 			if copied.Bindings == nil {
 				copied.Bindings = make(map[string]binding)
+			}
+			if rawSlots.Slots[i]["twist_3"] == nil {
+				copied.Twist3 = defaultAuxiliaryAxis()
+			}
+			if rawSlots.Slots[i]["twist_4"] == nil {
+				copied.Twist4 = defaultAuxiliaryAxis()
+			}
+			if rawSlots.Slots[i]["twist_5"] == nil {
+				copied.Twist5 = defaultAuxiliaryAxis()
+			}
+			if rawSlots.Slots[i]["twist_6"] == nil {
+				copied.Twist6 = defaultAuxiliaryAxis()
+			}
+			if rawSlots.Slots[i]["twist_7"] == nil {
+				copied.Twist7 = defaultAuxiliaryAxis()
+			}
+			if rawSlots.Slots[i]["twist_8"] == nil {
+				copied.Twist8 = defaultAuxiliaryAxis()
 			}
 			initAxisProfiles(&copied)
 			p.Slots[i] = &copied
@@ -137,6 +163,10 @@ func (a *appState) persistProfiles(active config) error {
 		return err
 	}
 	path := profilesFilePath()
+	// Keep each profile's settings that this build doesn't know (see saveConfig).
+	if old, err := os.ReadFile(path); err == nil {
+		contents = keepUnknownSettings(contents, old, reflect.TypeOf(*p))
+	}
 	tmp := path + ".tmp"
 	if err = os.WriteFile(tmp, contents, 0644); err != nil {
 		return err
