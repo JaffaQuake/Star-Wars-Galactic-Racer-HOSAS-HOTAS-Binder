@@ -227,6 +227,7 @@ func (a *appState) switchProfile(number int) {
 		a.devicesMu.Unlock()
 	} else {
 		_ = a.di.Restart(a.hwnd)
+		a.reconcileJoystickIDs()
 	}
 	a.populateCombos()
 	a.applyConfigToUI()
