@@ -643,6 +643,7 @@ func drivingPedals(accel, brake float64) (byte, byte) {
 type config struct {
 	DrivingWheel           drivingWheelConfig         `json:"driving_wheel"`
 	InputBackend           string                     `json:"input_backend"`
+	DevicePaths            map[string]string          `json:"di_device_paths,omitempty"` // DirectInput ID -> device path, to follow controllers when Windows renumbers them
 	ControlMode            string                     `json:"control_mode"`
 	HotasThrottleID        int                        `json:"hotas_throttle_id"`
 	HotasThrottleDIGUID    string                     `json:"hotas_throttle_di_guid"`
@@ -943,6 +944,7 @@ type diDevice struct {
 	GUID         diGUID
 	GUIDString   string
 	Name         string
+	Path         string // device path; stays the same across restarts
 	Ptr          uintptr
 	LastAxes     [8]int32
 	HaveLast     bool
@@ -1116,7 +1118,7 @@ func (m *directInputManager) Start(hwnd uintptr) error {
 			continue
 		}
 		_ = comCall(dev, 7) // Acquire. Retry also happens when polling.
-		m.devices = append(m.devices, &diDevice{GUID: desc.GUID, GUIDString: diGUIDString(desc.GUID), Name: desc.Name, Ptr: dev})
+		m.devices = append(m.devices, &diDevice{GUID: desc.GUID, GUIDString: diGUIDString(desc.GUID), Name: desc.Name, Path: diDevicePath(dev), Ptr: dev})
 	}
 	return nil
 }
@@ -2231,6 +2233,7 @@ func main() {
 	if err := app.di.Start(hwnd); err != nil {
 		app.postStatus("DirectInput unavailable: " + err.Error())
 	} else {
+		app.reconcileJoystickIDs()
 		app.populateCombos()
 		app.applyConfigToUI()
 		app.updateContextVisibility()
@@ -6350,6 +6353,7 @@ func (a *appState) onCommand(id, notify int) {
 			a.devicesMu.Unlock()
 		} else {
 			_ = a.di.Restart(a.hwnd)
+			a.reconcileJoystickIDs()
 		}
 		a.populateCombos()
 		a.applyConfigToUI()
